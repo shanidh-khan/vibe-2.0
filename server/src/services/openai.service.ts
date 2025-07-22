@@ -7,15 +7,22 @@ export interface MocketEndpoint {
   method: string;
   endpoint: string;
   requestHeaders: Record<string, unknown>;
-  request: Record<string, unknown>;
-  response: Record<string, unknown>;
+  response: {
+    status: number
+    headers: Record<string, string>
+    body: string
+  }
+  request?: {
+    headers?: Record<string, string>
+    body?: string
+  }
   slugName: string;
   description: string;
 }
 
 export interface ApiGenerationRequest {
-  type: "rest api" | "graphql" | "webhook";
-  apiDescription: string;
+  collectionId: string;
+  prompt: string;
 }
 
 export interface ApiGenerationResponse {
@@ -30,8 +37,15 @@ const EndpointSchema = z.object({
   method: z.string(),
   endpoint: z.string(),
   requestHeaders: z.record(z.unknown()),
-  request: z.record(z.unknown()),
-  response: z.record(z.unknown()),
+  request: z.object({
+    headers: z.record(z.string()).optional(),
+    body: z.string().optional(),
+  }).optional(),
+  response: z.object({
+    status: z.number(),
+    headers: z.record(z.string()),
+    body: z.string(),
+  }),
   slugName: z.string(),
   description: z.string(),
 });
@@ -54,13 +68,12 @@ export class OpenAIService {
   /**
    * Generate API endpoints using OpenAI
    */
-  async generateApiEndpoints(request: ApiGenerationRequest): Promise<ApiGenerationResponse> {
+  async generateApiEndpoints(description: string): Promise<ApiGenerationResponse> {
     try {
       const prompt = `
-You are an expert API designer. Generate API endpoints based on the following requirements:
+You are an expert API designer. Generate REST API endpoints based on the following requirements:
 
-API TYPE: ${request.type}
-API DESCRIPTION: ${request.apiDescription}
+API DESCRIPTION: ${description}
 
 Generate a JSON response with the following structure:
 {
@@ -72,8 +85,15 @@ Generate a JSON response with the following structure:
       "method": "GET|POST|PUT|DELETE|PATCH",
       "endpoint": "string (URL path)",
       "requestHeaders": {"Content-Type": "application/json"},
-      "request": {"key": "value"},
-      "response": {"status": 200, "data": "sample response"},
+      "response": {
+        "status": 200,
+        "headers": {"Content-Type": "application/json"},
+        "body": "string (JSON response body)"
+      },
+      "request": {
+        "headers": {"Content-Type": "application/json"},
+        "body": "string (JSON request body)"
+      },
       "slugName": "string (URL-friendly name)",
       "description": "string"
     }
@@ -83,11 +103,13 @@ Generate a JSON response with the following structure:
 Make sure to:
 1. Use realistic sample data
 2. Follow RESTful principles for REST APIs
-3. Include appropriate HTTP status codes in response
+3. Include appropriate HTTP status codes in response (200, 201, 400, 404, 500, etc.)
 4. Generate meaningful endpoint names and descriptions
-5. Provide realistic request/response examples
+5. Provide realistic request/response examples with proper JSON structure
 6. Create slugName as URL-friendly versions of the name (lowercase, hyphens instead of spaces)
-7. Do not wrap responses in markdown code blocks (\`\`\`json). Return only the raw JSON object.
+7. For response.body and request.body, provide valid JSON strings (not objects)
+8. Include proper Content-Type headers in both request and response
+9. Do not wrap responses in markdown code blocks (\`\`\`json). Return only the raw JSON object.
 `;
 
       const completion = await this.openai.chat.completions.create({

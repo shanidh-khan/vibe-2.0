@@ -72,6 +72,15 @@ export const mockApis = apiWithTags.injectEndpoints({
       }),
       invalidatesTags: ["MOCKET_LIST"],
     }),
+
+    importFromSwagger: builder.mutation<BackendEndpoint[], { collectionId: string; swagger: object }>({
+      query: ({ collectionId, swagger }) => ({
+        url: `/mockets/generate-from-swagger`,
+        method: "POST",
+        body: { collectionId, swagger },
+      }),
+      invalidatesTags: ["MOCKET_LIST"],
+    }),
   }),
 });
 
@@ -84,6 +93,7 @@ export const {
   useLazyGetMocksQuery,
   useUpdateMocketMutation,
   useDeleteMocketMutation,
+  useImportFromSwaggerMutation,
 } = mockApis;
 
 export interface Endpoint {

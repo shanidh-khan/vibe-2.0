@@ -1,14 +1,15 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronDown, Plus, Globe, Zap, Trash2 } from "lucide-react"
+import { ChevronDown, Plus, Globe, Zap, Trash2, Upload } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import type { Collection, MockEndpoint } from "./mock-api-platform"
 import { AddEndpointDialog } from "./add-endpoint-dialog"
 import { AddCollectionDialog } from "./add-collection-dialog"
-import { mockApis, BackendEndpoint } from "@/apis/mocket"
+import { ImportSwaggerDialog } from "./import-swagger-dialog"
+import { mockApis, BackendEndpoint, useImportFromSwaggerMutation } from "@/apis/mocket"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,8 +45,11 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const [showAddEndpoint, setShowAddEndpoint] = useState(false)
   const [showAddCollection, setShowAddCollection] = useState(false)
+  const [showImportSwagger, setShowImportSwagger] = useState(false)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [endpointToDelete, setEndpointToDelete] = useState<MockEndpoint | null>(null)
+  
+  const [importFromSwagger, { isLoading: isImporting }] = useImportFromSwaggerMutation()
   
   const [deleteMocket] = mockApis.useDeleteMocketMutation()
   
@@ -131,6 +135,38 @@ export function AppSidebar({
     setEndpointToDelete(null)
   }
 
+  const handleImportSwagger = async (swaggerJson: string) => {
+    try {
+      if (!selectedCollection) {
+        console.error('No collection selected')
+        return
+      }
+      
+      // Parse JSON string to object before sending to API
+      let parsedSwagger
+      try {
+        parsedSwagger = JSON.parse(swaggerJson)
+      } catch (parseError) {
+        console.error('Invalid JSON format:', parseError)
+        return
+      }
+      
+      console.log('Importing Swagger JSON for collection:', selectedCollection.id)
+      const result = await importFromSwagger({
+        collectionId: selectedCollection.id,
+        swagger: parsedSwagger
+      }).unwrap()
+      
+      console.log('Import successful:', result)
+      setShowImportSwagger(false)
+      
+      // TODO: Add success notification/toast
+    } catch (error) {
+      console.error('Failed to import from Swagger:', error)
+      // TODO: Add error notification/toast
+    }
+  }
+
   return (
     <>
       <div
@@ -175,14 +211,26 @@ export function AppSidebar({
           <div className="p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Endpoints</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowAddEndpoint(true)}
-                className="h-6 w-6 p-0 hover:bg-muted/50"
-              >
-                <Plus className="h-3 w-3" />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowImportSwagger(true)}
+                  className="h-6 w-6 p-0 hover:bg-muted/50"
+                  title="Import from Swagger"
+                >
+                  <Upload className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAddEndpoint(true)}
+                  className="h-6 w-6 p-0 hover:bg-muted/50"
+                  title="Add Endpoint"
+                >
+                  <Plus className="h-3 w-3" />
+                </Button>
+              </div>
             </div>
             <div className="space-y-1 overflow-y-auto max-h-[calc(100vh-300px)]">
               {uiEndpoints.map((endpoint) => (
@@ -242,6 +290,13 @@ export function AppSidebar({
         open={showAddCollection}
         onOpenChange={setShowAddCollection}
         onAddCollection={onAddCollection}
+      />
+      
+      <ImportSwaggerDialog
+        open={showImportSwagger}
+        onOpenChange={setShowImportSwagger}
+        onImport={handleImportSwagger}
+        isLoading={isImporting}
       />
       
       <AlertDialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>

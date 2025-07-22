@@ -5,62 +5,20 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sparkles, Wand2 } from "lucide-react"
-import type { MockEndpoint } from "@/lib/constants/endpoints.constants"
+import { useGenerateApiEndpointsMutation, type MocketEndpoint } from "../apis/aiApi"
+import { toast } from "@/hooks/use-toast"
+import type { MockEndpoint } from "./mock-api-platform"
 
 interface AiMockGeneratorProps {
-  onGenerateEndpoint: (endpoint: any) => void
+  onGenerateEndpoint: (endpoint: MockEndpoint) => void
   collectionId: string
 }
 
 export function AiMockGenerator({ onGenerateEndpoint, collectionId }: AiMockGeneratorProps) {
   const [prompt, setPrompt] = useState("")
-  const [apiType, setApiType] = useState("rest")
-  const [isGenerating, setIsGenerating] = useState(false)
-
-  const handleGenerate = async () => {
-    if (!prompt.trim()) return
-
-    setIsGenerating(true)
-
-    // Simulate AI generation
-    setTimeout(() => {
-      const generatedEndpoint = {
-        _id: Date.now().toString(),
-        name: `AI Generated: ${prompt.slice(0, 30)}...`,
-        method: "GET",
-        path: `/api/${prompt.toLowerCase().replace(/\s+/g, "-").slice(0, 20)}`,
-        description: `AI generated endpoint for: ${prompt}`,
-        response: {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(
-            {
-              message: "AI generated response",
-              data: {
-                id: 1,
-                name: "Sample Data",
-                description: `Generated based on: ${prompt}`,
-                timestamp: new Date().toISOString(),
-                items: [
-                  { id: 1, value: "Sample Item 1" },
-                  { id: 2, value: "Sample Item 2" },
-                ],
-              },
-            },
-            null,
-            2,
-          ),
-        },
-      }
-
-      onGenerateEndpoint(generatedEndpoint)
-      setPrompt("")
-      setIsGenerating(false)
-    }, 2000)
-  }
-
+  const [generateApiEndpoints, { isLoading: isGenerating }] = useGenerateApiEndpointsMutation()
+  
   const suggestions = [
     "Create a user management API with CRUD operations",
     "Generate an e-commerce product catalog API",
@@ -68,6 +26,48 @@ export function AiMockGenerator({ onGenerateEndpoint, collectionId }: AiMockGene
     "Create a task management API",
     "Generate a weather data API",
   ]
+
+  const handleGenerate = async () => {
+    if (!prompt.trim()) return
+
+    try {
+      const result = await generateApiEndpoints({ description: prompt, collectionId }).unwrap()
+      
+      // Convert the AI response to the expected format and call onGenerateEndpoint for each endpoint
+      result.data.endpoints.forEach((endpoint: MocketEndpoint) => {
+        const generatedEndpoint: MockEndpoint = {
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          name: endpoint.name,
+          method: endpoint.method as MockEndpoint["method"],
+          path: endpoint.endpoint,
+          description: endpoint.description,
+          response: {
+            status: 200,
+            headers: endpoint.requestHeaders as Record<string, string>,
+            body: JSON.stringify(endpoint.response, null, 2),
+          },
+          request: {
+            headers: endpoint.requestHeaders as Record<string, string>,
+            body: JSON.stringify(endpoint.request, null, 2),
+          },
+        }
+        onGenerateEndpoint(generatedEndpoint)
+      })
+
+      setPrompt("")
+      toast({
+        title: "Success!",
+        description: `Generated ${result.data.endpoints.length} REST API endpoints`,
+      })
+    } catch (error) {
+      console.error("Error generating endpoints:", error)
+      toast({
+        title: "Error",
+        description: "Failed to generate API endpoints. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
 
   return (
     <Card className="w-full border-border/50 dark:border-gray-800/50">
@@ -80,21 +80,7 @@ export function AiMockGenerator({ onGenerateEndpoint, collectionId }: AiMockGene
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="api-type">API Type</Label>
-          <Select value={apiType} onValueChange={setApiType}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="rest">REST API</SelectItem>
-              <SelectItem value="graphql">GraphQL</SelectItem>
-              <SelectItem value="webhook">Webhook</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="prompt">Describe your API</Label>
+          <Label htmlFor="prompt">Describe your REST API</Label>
           <Textarea
             id="prompt"
             placeholder="e.g., Create a user management API with endpoints for creating, reading, updating, and deleting users. Include authentication and user profiles."
