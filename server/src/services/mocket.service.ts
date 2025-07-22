@@ -26,6 +26,144 @@ export default class MocketService {
    * @param userId The user creating the endpoints
    * @returns Array of results for each endpoint
    */
+  // public async generateMocketsFromSwaggerV2(swaggerConfig: any, collectionId: string, userId: string) {
+  //   if (!swaggerConfig || !swaggerConfig.paths) {
+  //     throw new ErrorHandler(400, "Invalid Swagger config: missing paths");
+  //   }
+  //   const results: Array<{ path: string, method: string, mocketId?: string, slugName?: string, error?: string }> = [];
+  //   for (const [path, methods] of Object.entries(swaggerConfig.paths)) {
+  //     for (const [method, operationRaw] of Object.entries(methods as any)) {
+  //       const operation = operationRaw as any;
+  //       const createMocket: CreateMocketDto = {
+  //         name: operation.summary || operation.operationId || `${method.toUpperCase()} ${path}`,
+  //         description: operation.description || '',
+  //         collectionId,
+  //         endpoint: path,
+  //         method: method.toUpperCase(),
+  //         request: JSON.stringify({ parameters: operation.parameters || [] }),
+  //         response: JSON.stringify(this.buildSwaggerResponseSchema(operation.responses, swaggerConfig.definitions)),
+  //       };
+  //       try {
+  //         // @ts-ignore: Awaiting the existing createMocket method
+  //         const mocket = await this.createMocket(createMocket, userId);
+  //         results.push({ path, method: method.toUpperCase(), mocketId: mocket?.mocketId as string, slugName: mocket?.slugName });
+  //       } catch (err: any) {
+  //         results.push({ path, method: method.toUpperCase(), error: err?.message || String(err) });
+  //       }
+  //     }
+  //   }
+  //   return results;
+  // }
+
+  /**
+   * Build a dynamic response schema for a Swagger operation's responses
+   * @param responses Swagger operation.responses
+   * @param definitions Swagger definitions
+   * @returns { status, headers, body }
+   */
+  private buildSwaggerResponseSchema(responses: any, definitions: any) {
+    // Pick 200, 201, or default response
+    const statusKey = Object.keys(responses).find(k => ['200','201','default'].includes(k)) || Object.keys(responses)[0];
+    const resp = responses[statusKey] || {};
+    let body: any = {};
+    if (resp.schema && resp.schema['$ref']) {
+      const ref = resp.schema['$ref'];
+      const defName = ref.replace('#/definitions/', '');
+      if (definitions && definitions[defName]) {
+        body = this.buildDynamicSchemaFromDefinition(definitions[defName], definitions);
+      }
+    } else if (resp.schema && resp.schema.type === 'array' && resp.schema.items && resp.schema.items['$ref']) {
+      // Array of objects
+      const ref = resp.schema.items['$ref'];
+      const defName = ref.replace('#/definitions/', '');
+      if (definitions && definitions[defName]) {
+        body = [this.buildDynamicSchemaFromDefinition(definitions[defName], definitions)];
+      }
+    } else if (resp.schema && resp.schema.type) {
+      // Primitive type
+      body = this.dynamicValueForType(resp.schema.type, '', resp.schema.format);
+    } else {
+      body = {};
+    }
+    return {
+      status: parseInt(statusKey) || 200,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    }
+  }
+
+  /**
+   * Recursively build a dynamic object using << >> placeholders for each property
+   */
+  private buildDynamicSchemaFromDefinition(def: any, definitions: any): any {
+    if (def.type === 'object' && def.properties) {
+      const obj: any = {};
+      for (const [key, prop] of Object.entries(def.properties)) {
+        if ((prop as any)['$ref']) {
+          // Nested ref
+          const ref = (prop as any)['$ref'];
+          const defName = ref.replace('#/definitions/', '');
+          obj[key] = this.buildDynamicSchemaFromDefinition(definitions[defName], definitions);
+        } else if ((prop as any).type === 'array' && (prop as any).items) {
+          if ((prop as any).items['$ref']) {
+            // Array of objects
+            const ref = (prop as any).items['$ref'];
+            const defName = ref.replace('#/definitions/', '');
+            obj[key] = [this.buildDynamicSchemaFromDefinition(definitions[defName], definitions)];
+          } else {
+            // Array of primitives
+            obj[key] = [this.dynamicValueForType((prop as any).items.type, key, (prop as any).items.format)];
+          }
+        } else {
+          obj[key] = this.dynamicValueForType((prop as any).type, key, (prop as any).format);
+        }
+      }
+      return obj;
+    } else if (def.type === 'array' && def.items) {
+      if (def.items['$ref']) {
+        const defName = def.items['$ref'].replace('#/definitions/', '');
+        return [this.buildDynamicSchemaFromDefinition(definitions[defName], definitions)];
+      } else {
+        return [this.dynamicValueForType(def.items.type, '', def.items.format)];
+      }
+    } else {
+      return this.dynamicValueForType(def.type, '', def.format);
+    }
+  }
+
+  /**
+   * Get << >> placeholder for a property based on key/type/format
+   */
+  private dynamicValueForType(type: string, key: string, format?: string): string {
+    // Key-based mapping
+    const keyLower = key.toLowerCase();
+    if (["id", "petid", "orderid", "userid"].includes(keyLower)) return "<<number>>";
+    if (["email", "mail"].includes(keyLower)) return "<<email>>";
+    if (["date", "shipdate"].includes(keyLower)) return "<<date>>";
+    if (["status"].includes(keyLower)) return "<<string>>";
+    if (["phone", "phonenumber"].includes(keyLower)) return "<<phone>>";
+    // Type-based mapping
+    if (type === 'integer' || type === 'number') return "<<number>>";
+    if (type === 'string') {
+      if (format === 'date-time' || format === 'date') return "<<date>>";
+      return "<<string>>";
+    }
+    if (type === 'boolean') return "<<boolean>>";
+    // Fallback
+    return "<<string>>";
+  }
+
+  private openai = new OpenAI({
+    apiKey: OPENAI_API_KEY,
+  });
+
+  /**
+   * Generate mocket endpoints from a Swagger (OpenAPI 2.0) config (V2, non-breaking)
+   * @param swaggerConfig The parsed Swagger JSON
+   * @param collectionId The collection to add endpoints to
+   * @param userId The user creating the endpoints
+   * @returns Array of results for each endpoint
+   */
   public async generateMocketsFromSwaggerV2(swaggerConfig: any, collectionId: string, userId: string) {
     if (!swaggerConfig || !swaggerConfig.paths) {
       throw new ErrorHandler(400, "Invalid Swagger config: missing paths");
@@ -40,8 +178,8 @@ export default class MocketService {
           collectionId,
           endpoint: path,
           method: method.toUpperCase(),
-          request: JSON.stringify({ parameters: operation.parameters || [] }),
-          response: JSON.stringify({ responses: operation.responses || {} }),
+          request: { parameters: operation.parameters || [] },
+          response: this.buildSwaggerResponseSchema(operation.responses, swaggerConfig.definitions),
         };
         try {
           // @ts-ignore: Awaiting the existing createMocket method
@@ -54,11 +192,6 @@ export default class MocketService {
     }
     return results;
   }
-
-  private openai = new OpenAI({
-    apiKey: OPENAI_API_KEY,
-  });
-
   private systemPrompt = `You are an API generation assistant. Your task is to create mock API definitions based on user prompts.  
 
   **Response Format (JSON):**  
