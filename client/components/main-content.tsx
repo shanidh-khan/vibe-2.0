@@ -343,12 +343,17 @@ export function MainContent({
                       <Input
                         id="path"
                         value={selectedEndpoint.path}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          let value = e.target.value
+                          // Ensure path always starts with /
+                          if (value && !value.startsWith('/')) {
+                            value = '/' + value
+                          }
                           onUpdateEndpoint({
                             ...selectedEndpoint,
-                            path: e.target.value,
+                            path: value,
                           })
-                        }
+                        }}
                         className="border-border/50 dark:border-gray-700 font-mono"
                       />
                     </div>
@@ -399,7 +404,9 @@ export function MainContent({
                         />
                         {/* Validation for headers when required */}
                         {(selectedEndpoint.method === 'POST' || selectedEndpoint.method === 'PUT' || selectedEndpoint.method === 'PATCH') && 
-                         (!selectedEndpoint.request.headers || selectedEndpoint.request.headers.trim() === '') && (
+                         (!selectedEndpoint.request.headers || 
+                          (typeof selectedEndpoint.request.headers === 'string' && selectedEndpoint.request.headers.trim() === '') ||
+                          (typeof selectedEndpoint.request.headers === 'object' && Object.keys(selectedEndpoint.request.headers).length === 0)) && (
                           <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded border border-amber-200 dark:border-amber-900/50">
                             ⚠️ Headers may be required for {selectedEndpoint.method} requests. Consider adding Content-Type and other necessary headers.
                           </div>

@@ -148,7 +148,14 @@ export function AddEndpointDialog({ open, onOpenChange, onAddEndpoint, collectio
             <Input
               id="path"
               value={path}
-              onChange={(e) => setPath(e.target.value)}
+              onChange={(e) => {
+                let value = e.target.value
+                // Ensure path always starts with /
+                if (value && !value.startsWith('/')) {
+                  value = '/' + value
+                }
+                setPath(value)
+              }}
               className="col-span-3"
               placeholder="/api/users"
             />
