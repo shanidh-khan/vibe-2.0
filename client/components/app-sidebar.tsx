@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import type { Collection, MockEndpoint } from "./mock-api-platform"
 import { AddEndpointDialog } from "./add-endpoint-dialog"
 import { AddCollectionDialog } from "./add-collection-dialog"
+import { mockApis, BackendEndpoint } from "@/apis/mocket"
 
 interface AppSidebarProps {
   collections: Collection[]
@@ -33,6 +34,39 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const [showAddEndpoint, setShowAddEndpoint] = useState(false)
   const [showAddCollection, setShowAddCollection] = useState(false)
+  
+  // Fetch endpoints for the selected collection
+  const { data: backendEndpoints } = mockApis.useGetMocksQuery(
+    selectedCollection ? { collectionId: selectedCollection.id } : {},
+    { skip: !selectedCollection }
+  )
+  
+  // Convert backend endpoints to UI format
+  const uiEndpoints: MockEndpoint[] = (backendEndpoints || []).map((endpoint: BackendEndpoint) => {
+    // Handle the new response structure
+    let response = {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: ""
+    }
+    
+    if (endpoint.response && typeof endpoint.response === 'object') {
+      response = {
+        status: endpoint.response.status || 200,
+        headers: endpoint.response.headers || { "Content-Type": "application/json" } as Record<string, string> & { "Content-Type": string },
+        body: endpoint.response.body || ""
+      }
+    }
+    
+    return {
+      id: endpoint._id,
+      name: endpoint.name,
+      method: endpoint.method as MockEndpoint["method"],
+      path: endpoint.endpoint, // Backend uses 'endpoint', UI uses 'path'
+      description: endpoint.description || '',
+      response,
+    }
+  })
 
   const getMethodColor = (method: string) => {
     switch (method) {
@@ -105,7 +139,7 @@ export function AppSidebar({
               </Button>
             </div>
             <div className="space-y-1 overflow-y-auto max-h-[calc(100vh-300px)]">
-              {selectedCollection.endpoints.map((endpoint) => (
+              {uiEndpoints.map((endpoint) => (
                 <div
                   key={endpoint.id}
                   onClick={() => onSelectEndpoint(endpoint)}
@@ -147,6 +181,7 @@ export function AppSidebar({
         open={showAddEndpoint}
         onOpenChange={setShowAddEndpoint}
         onAddEndpoint={(endpoint) => onAddEndpoint(selectedCollection.id, endpoint)}
+        collectionId={selectedCollection.id}
       />
 
       <AddCollectionDialog

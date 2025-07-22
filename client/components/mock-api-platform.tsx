@@ -1,8 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
 import { MainContent } from "@/components/main-content"
+import { collectionApis } from "@/apis/collection"
+import { mockApis, BackendEndpoint } from "@/apis/mocket"
 
 export interface MockEndpoint {
   id: string
@@ -29,79 +31,112 @@ export interface Collection {
 
 export function MockApiPlatform() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [collections, setCollections] = useState<Collection[]>([
-    {
-      id: "1",
-      name: "User API",
-      endpoints: [
-        {
-          id: "1",
-          name: "Get Users",
-          method: "GET",
-          path: "/api/users",
-          description: "Retrieve all users",
-          response: {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(
-              [
-                { id: 1, name: "John Doe", email: "john@example.com" },
-                { id: 2, name: "Jane Smith", email: "jane@example.com" },
-              ],
-              null,
-              2,
-            ),
-          },
-        },
-        {
-          id: "2",
-          name: "Create User",
-          method: "POST",
-          path: "/api/users",
-          description: "Create a new user",
-          response: {
-            status: 201,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: 3, name: "New User", email: "new@example.com" }, null, 2),
-          },
-          request: {
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: "New User", email: "new@example.com" }, null, 2),
-          },
-        },
-      ],
-    },
-    {
-      id: "2",
-      name: "Product API",
-      endpoints: [
-        {
-          id: "3",
-          name: "Get Products",
-          method: "GET",
-          path: "/api/products",
-          description: "Retrieve all products",
-          response: {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(
-              [
-                { id: 1, name: "Laptop", price: 999.99 },
-                { id: 2, name: "Phone", price: 599.99 },
-              ],
-              null,
-              2,
-            ),
-          },
-        },
-      ],
-    },
-  ])
+  const [collections, setCollections] = useState<Collection[]>([])
+  const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null)
+  const [selectedEndpoint, setSelectedEndpoint] = useState<MockEndpoint | null>(null)
+  
+  // Fetch collections from API
+  const { data: apiCollections, isLoading, error } = collectionApis.useGetCollectionsQuery()
+  const { data: endpoints } = mockApis.useGetMocksQuery(
+    selectedCollection ? { collectionId: selectedCollection.id } : {},
+    { skip: !selectedCollection }
+  )
 
-  const [selectedCollection, setSelectedCollection] = useState<Collection>(collections[0])
-  const [selectedEndpoint, setSelectedEndpoint] = useState<MockEndpoint | null>(collections[0].endpoints[0])
+  // Convert API collections to UI format and set default selections
+  useEffect(() => {
+    if (apiCollections && apiCollections.length > 0) {
+      // Map API collections to UI format
+      const uiCollections: Collection[] = apiCollections.map(apiCollection => ({
+        id: apiCollection._id, // Map _id to id
+        name: apiCollection.name,
+        endpoints: [] // Will be populated when selectedCollection changes
+      }))
+      
+      setCollections(uiCollections)
+      
+      // Set default selection if none selected
+      if (!selectedCollection && uiCollections.length > 0) {
+        setSelectedCollection(uiCollections[0])
+        // You'll need to fetch endpoints for the collection separately
+      }
+    }
+  }, [apiCollections, selectedCollection])
+
+  // Update selected collection with endpoints when endpoints are fetched
+  useEffect(() => {
+    console.log('Endpoints effect triggered:', { selectedCollection: selectedCollection?.id, endpoints })
+    
+    if (selectedCollection && endpoints && endpoints.length > 0) {
+      const uiEndpoints: MockEndpoint[] = endpoints.map((endpoint: BackendEndpoint) => {
+        console.log('Mapping endpoint:', endpoint)
+        
+        // Handle the new response structure
+        let response = {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+          body: ""
+        }
+        
+        if (endpoint.response && typeof endpoint.response === 'object') {
+          response = {
+            status: endpoint.response.status || 200,
+            headers: endpoint.response.headers || { "Content-Type": "application/json" } as Record<string, string> & { "Content-Type": string },
+            body: endpoint.response.body || ""
+          }
+        }
+        
+        return {
+          id: endpoint._id,
+          name: endpoint.name,
+          method: endpoint.method as MockEndpoint["method"],
+          path: endpoint.endpoint, // Backend uses 'endpoint', UI uses 'path'
+          description: endpoint.description || '',
+          response,
+        }
+      })
+
+      console.log('Mapped UI endpoints:', uiEndpoints)
+
+      // Update the selected collection with its endpoints
+      setCollections(prevCollections => {
+        const updatedCollections = prevCollections.map(collection => 
+          collection.id === selectedCollection.id 
+            ? { ...collection, endpoints: uiEndpoints }
+            : collection
+        )
+        console.log('Updated collections:', updatedCollections)
+        return updatedCollections
+      })
+    }
+  }, [endpoints, selectedCollection])
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p>Loading collections...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center">
+        <div className="text-center text-red-500">
+          <p>Error loading collections</p>
+          <p className="text-sm mt-2">Please try refreshing the page</p>
+        </div>
+      </div>
+    )
+  }
 
   const updateEndpoint = (updatedEndpoint: MockEndpoint) => {
+    if (!selectedCollection) return
+    
     setCollections((prev) =>
       prev.map((collection) =>
         collection.id === selectedCollection.id
@@ -127,6 +162,18 @@ export function MockApiPlatform() {
 
   const addCollection = (collection: Collection) => {
     setCollections((prev) => [...prev, collection])
+  }
+
+  // Don't render if no collections loaded yet
+  if (collections.length === 0 || !selectedCollection) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center">
+        <div className="text-center">
+          <p>No collections found</p>
+          <p className="text-sm text-muted-foreground mt-2">Create a collection to get started</p>
+        </div>
+      </div>
+    )
   }
 
   return (

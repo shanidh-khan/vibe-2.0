@@ -13,10 +13,12 @@ import { Play, Save, Copy, Menu } from "lucide-react"
 import type { MockEndpoint, Collection } from "./mock-api-platform"
 import { AiMockGenerator } from "./ai-mock-generator"
 import { ThemeToggle } from "./theme-toggle"
+import { collectionApis } from "@/apis/collection"
+import { mockApis } from "@/apis/mocket"
 
 interface MainContentProps {
   selectedEndpoint: MockEndpoint | null
-  selectedCollection: Collection
+  selectedCollection: Collection | null
   onUpdateEndpoint: (endpoint: MockEndpoint) => void
   onAddEndpoint: (collectionId: string, endpoint: MockEndpoint) => void
   onToggleSidebar: () => void
@@ -31,8 +33,11 @@ export function MainContent({
 }: MainContentProps) {
   const [testResponse, setTestResponse] = useState<string>("")
   const [isLoading, setIsLoading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [updateCollection] = collectionApis.useUpdateCollectionMutation()
+  const [updateMocket] = mockApis.useUpdateMocketMutation()
 
-  if (!selectedEndpoint) {
+  if (!selectedEndpoint ) {
     return (
       <div className="flex flex-col h-full">
         <header className="flex h-16 shrink-0 items-center gap-4 px-6 border-b border-border/50 dark:border-gray-800/50 bg-gradient-to-r from-background to-muted/20">
@@ -57,10 +62,12 @@ export function MainContent({
                 Select an endpoint from the sidebar to start editing, or create a new one with AI.
               </p>
             </div>
-            <AiMockGenerator
-              onGenerateEndpoint={(endpoint) => onAddEndpoint(selectedCollection.id, endpoint)}
-              collectionId={selectedCollection.id}
-            />
+            {selectedCollection && (
+              <AiMockGenerator
+                onGenerateEndpoint={(endpoint) => onAddEndpoint(selectedCollection.id, endpoint)}
+                collectionId={selectedCollection.id}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -83,6 +90,54 @@ export function MainContent({
       )
       setIsLoading(false)
     }, 1000)
+  }
+
+  const handleSave = async () => {
+    if (!selectedEndpoint || !selectedEndpoint.id) {
+      console.error("No endpoint selected or endpoint ID missing")
+      return
+    }
+
+    if (!selectedCollection || !selectedCollection.id) {
+      console.error("No collection selected or collection ID missing")
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      // Map UI endpoint to API format
+      const endpointData = {
+        name: selectedEndpoint.name,
+        method: selectedEndpoint.method,
+        endpoint: selectedEndpoint.path, // UI uses 'path', API expects 'endpoint'
+        description: selectedEndpoint.description,
+        collectionId: selectedCollection.id,
+        requestHeaders: { "Content-Type": "application/json" },
+        request: {}, // You might want to expand this based on your needs
+        response: {
+          status: selectedEndpoint.response.status,
+          headers: selectedEndpoint.response.headers,
+          body: selectedEndpoint.response.body
+        }
+      }
+
+      const result = await updateMocket({
+        id: selectedEndpoint.id,
+        ...endpointData
+      }).unwrap()
+
+      console.log("Endpoint saved successfully:", result)
+      // You might want to show a success toast notification here
+      
+      // Optionally update the parent component with the saved endpoint
+      // onUpdateEndpoint(selectedEndpoint)
+      
+    } catch (error) {
+      console.error("Failed to save endpoint:", error)
+      // You might want to show an error toast notification here
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const getMethodColor = (method: string) => {
@@ -123,9 +178,14 @@ export function MainContent({
             <Play className="h-4 w-4 mr-2" />
             {isLoading ? "Testing..." : "Test"}
           </Button>
-          <Button variant="outline" className="border-border/50 dark:border-gray-700 bg-transparent">
+          <Button 
+            onClick={handleSave}
+            disabled={isSaving}
+            variant="outline" 
+            className="border-border/50 dark:border-gray-700 bg-transparent"
+          >
             <Save className="h-4 w-4 mr-2" />
-            Save
+            {isSaving ? "Saving..." : "Save"}
           </Button>
           <ThemeToggle />
         </div>
