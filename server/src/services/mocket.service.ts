@@ -242,7 +242,7 @@ export default class MocketService {
     }
 
     if (matchedMocket.method == Methods.POST || matchedMocket.method == Methods.PUT) {
-      this.validateRequest(requestBody, matchedMocket.request.body);
+      this.validateRequest(requestBody, JSON.parse(matchedMocket.request.body as string));
     }
 
     const responseBody = JSON.parse(matchedMocket.response.body as string);
@@ -251,6 +251,8 @@ export default class MocketService {
   }
 
   private validateRequest(requestBody: any, schema: any, path: string = "") {
+    console.log(requestBody, schema);
+    
     if (requestBody === null || (requestBody === undefined && schema !== null)) {
       throw new ErrorHandler(400, `Missing key at ${path}`);
     }
