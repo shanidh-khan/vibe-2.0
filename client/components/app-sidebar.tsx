@@ -135,35 +135,29 @@ export function AppSidebar({
     setEndpointToDelete(null)
   }
 
-  const handleImportSwagger = async (swaggerJson: string) => {
+  const handleImportSwagger = async (swagger: object) => {
     try {
       if (!selectedCollection) {
         console.error('No collection selected')
         return
       }
       
-      // Parse JSON string to object before sending to API
-      let parsedSwagger
-      try {
-        parsedSwagger = JSON.parse(swaggerJson)
-      } catch (parseError) {
-        console.error('Invalid JSON format:', parseError)
-        return
-      }
-      
       console.log('Importing Swagger JSON for collection:', selectedCollection.id)
       const result = await importFromSwagger({
         collectionId: selectedCollection.id,
-        swagger: parsedSwagger
+        swagger: swagger
       }).unwrap()
       
       console.log('Import successful:', result)
+      
+      // Only close modal after successful import
       setShowImportSwagger(false)
       
       // TODO: Add success notification/toast
     } catch (error) {
       console.error('Failed to import from Swagger:', error)
       // TODO: Add error notification/toast
+      // Don't close modal on error so user can retry
     }
   }
 

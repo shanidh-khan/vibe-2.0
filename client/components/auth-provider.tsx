@@ -15,7 +15,7 @@ const AuthCheck = (props: PropsWithChildren) => {
   const { isSuccess, isLoading, isError } = useGetProfileQuery({});
   const router = useRouter();
   useEffect(() => {
-    if (isSuccess && checkForRedirect()) router.push("/dashboard");
+    if (isSuccess && checkForRedirect()) router.push("/app");
     if (isError) router.push("/auth");
     setLoading(false);
   }, [isSuccess, isError, router]);
