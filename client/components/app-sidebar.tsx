@@ -78,6 +78,7 @@ export function AppSidebar({
       method: endpoint.method as MockEndpoint["method"],
       path: endpoint.endpoint, // Backend uses 'endpoint', UI uses 'path'
       description: endpoint.description || '',
+      subDomain: endpoint.subDomain || '', // Include subdomain from backend
       response,
       request: endpoint.request || {}, // Include request data from backend
     }

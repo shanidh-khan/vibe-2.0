@@ -12,6 +12,7 @@ export interface MockEndpoint {
   method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH"
   path: string
   description?: string
+  subDomain?: string
   response: {
     status: number
     headers: Record<string, string>
@@ -26,6 +27,7 @@ export interface MockEndpoint {
 export interface Collection {
   id: string
   name: string
+  subDomain?: string
   endpoints: MockEndpoint[]
 }
 
@@ -46,9 +48,11 @@ export function MockApiPlatform() {
   useEffect(() => {
     if (apiCollections && apiCollections.length > 0) {
       // Map API collections to UI format
+      console.info(apiCollections, 'shaniddssdfsdh')
       const uiCollections: Collection[] = apiCollections.map(apiCollection => ({
         id: apiCollection._id, // Map _id to id
         name: apiCollection.name,
+        subDomain: apiCollection.subDomain || '', // Include subdomain from backend
         endpoints: [] // Will be populated when selectedCollection changes
       }))
       
@@ -91,6 +95,7 @@ export function MockApiPlatform() {
           method: endpoint.method as MockEndpoint["method"],
           path: endpoint.endpoint, // Backend uses 'endpoint', UI uses 'path'
           description: endpoint.description || '',
+          subDomain: endpoint.subDomain || '', // Include subdomain from backend
           response,
           request: endpoint.request || {}, // Include request data from backend
         }

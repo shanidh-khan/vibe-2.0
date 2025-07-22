@@ -92,6 +92,23 @@ export function MainContent({
     }, 1000)
   }
 
+  const handleCopyEndpointUrl = async () => {
+    const endpointUrl = `localhost:5000/${selectedCollection?.subDomain || ''}/${selectedEndpoint.path}`
+    try {
+      await navigator.clipboard.writeText(endpointUrl)
+      console.log("Endpoint URL copied to clipboard:", endpointUrl)
+    } catch (error) {
+      console.error("Failed to copy to clipboard:", error)
+      // Fallback for older browsers
+      const textArea = document.createElement("textarea")
+      textArea.value = endpointUrl
+      document.body.appendChild(textArea)
+      textArea.select()
+      document.execCommand("copy")
+      document.body.removeChild(textArea)
+    }
+  }
+
   const handleSave = async () => {
     if (!selectedEndpoint || !selectedEndpoint.id) {
       console.error("No endpoint selected or endpoint ID missing")
@@ -450,6 +467,26 @@ export function MainContent({
                       <Play className="h-4 w-4 mr-2" />
                       {isLoading ? "Testing..." : "Send Request"}
                     </Button>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Endpoint URL</Label>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 bg-muted/50 px-3 py-2 rounded-md text-sm font-mono border border-border/50 dark:border-gray-700 break-all">
+                        {`localhost:5000/${selectedCollection?.subDomain || ''}/${selectedEndpoint.path}`}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCopyEndpointUrl}
+                        className="border-border/50 dark:border-gray-700 bg-transparent hover:bg-muted"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Click the copy button to copy this URL to your clipboard for testing in other tools.
+                    </p>
                   </div>
 
                   {testResponse && (

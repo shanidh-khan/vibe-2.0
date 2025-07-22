@@ -12,6 +12,7 @@ export interface BackendEndpoint {
     body: string;
   };
   description?: string;
+  subDomain?: string;
   createdBy: string;
   collectionId: string;
   slugName: string;
