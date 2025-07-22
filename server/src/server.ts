@@ -25,6 +25,7 @@ import IndexController from "./controller/index.controller";
 import CollectionRepository from "./repositories/collection.repository";
 import CollectionService from "./services/collection.service";
 import CollectionController from "./controller/collection.controller";
+import AIController from "./controller/ai.controller";
 
 export default class Server {
   public app: Application;
@@ -100,6 +101,7 @@ export const StartServer = (app: Application, port: number | string) => {
     new UserController(userService),
     new CollectionController(collectionService),
     new MocketController(mocketService),
+    new AIController(),
     new IndexController(mocketService),
   ];
   const globalMiddlewares: RequestHandler[] = [
