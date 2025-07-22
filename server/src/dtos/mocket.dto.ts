@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString } from "class-validator";
+import { IsNotEmpty, IsObject, IsString } from "class-validator";
 
 export class MocketDto {
   @IsString()
@@ -15,17 +15,16 @@ export class MocketDto {
   @IsNotEmpty()
   endpoint!: string;
 
-  @IsString()
-  @IsNotEmpty()
-  requestHeaders?: string | Object;
-
-  @IsString()
+  // @IsString()
   // @IsNotEmpty()
-  requestBody!: string | Record<string, string> | Object;
+  // requestHeaders?: string | Object;
 
-  @IsString()
-  @IsNotEmpty()
-  responseBody!: string | Record<string, string> | Object;
+  @IsObject()
+  // @IsNotEmpty()
+  request!: string | Record<string, string> | Object;
+
+  @IsObject()
+  response!: string | Record<string, string> | Object;
 }
 export class CreateMocketDto extends MocketDto {
   @IsString()

@@ -5,8 +5,8 @@ export interface IMocket extends Document {
   method: string;
   endpoint: string;
   requestHeaders: Record<string, unknown>;
-  requestBody: Record<string, unknown>;
-  responseBody: Object;
+  request: Record<string, unknown>;
+  response: Object;
   createdBy: string | mongoose.Types.ObjectId;
   collectionId: mongoose.Types.ObjectId;
   slugName: string;
@@ -19,9 +19,9 @@ const MocketSchema: Schema = new Schema(
     // apikey: { type: String, required: true, unique: true },
     method: { type: String, required: true },
     endpoint: { type: String, required: true },
-    requestHeaders: { type: Schema.Types.Mixed, required: true },
-    requestBody: { type: Schema.Types.Mixed },
-    responseBody: { type: Schema.Types.Mixed, required: true },
+    requestHeaders: { type: Schema.Types.Mixed, default: {} },
+    request: { type: Schema.Types.Mixed },
+    response: { type: Schema.Types.Mixed, default: {} },
     createdBy: { type: Schema.Types.ObjectId, ref: "User" },
     collectionId: { type: Schema.Types.ObjectId, ref: "Collection" },
     slugName: { type: String, required: true, unique: true },

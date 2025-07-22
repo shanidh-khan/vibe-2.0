@@ -86,11 +86,11 @@ export default class MocketService {
         collectionId: collection?._id,
         endpoint: createMocket.endpoint,
         method: createMocket.method,
-        requestHeaders: (typeof createMocket.requestHeaders === "string" && createMocket.requestHeaders !== "undefined"
-          ? (() => { try { return JSON.parse(createMocket.requestHeaders as string); } catch { return {}; } })()
-          : {}),
-        requestBody: createMocket.requestBody,
-        responseBody: createMocket.responseBody,
+        // requestHeaders: (typeof createMocket.requestHeaders === "string" && createMocket.requestHeaders !== "undefined"
+        //   ? (() => { try { return JSON.parse(createMocket.requestHeaders as string); } catch { return {}; } })()
+        //   : {}),
+        request: createMocket.request,
+        response: createMocket.response,
         createdBy: user._id,
         slugName: generateUniqueMocketString(),
       } as IMocket);
@@ -132,9 +132,9 @@ export default class MocketService {
     const updatedDto = {
       method: dto.method,
       endpoint: dto.endpoint,
-      requestHeaders: JSON.parse(dto.requestHeaders as string),
-      requestBody: dto.requestBody,
-      responseBody: dto.responseBody,
+      // requestHeaders: JSON.parse(dto.requestHeaders as string),
+      request: dto.request,
+      response: dto.response,
     } as IMocket;
     await this.mocketRepo.update(id, updatedDto);
     return updatedDto;
@@ -161,10 +161,9 @@ export default class MocketService {
     const mocket = await this.mocketRepo.create({
       projectId: new mongoose.Types.ObjectId("6788c32cb027d8ab099734fc"),
       endpoint: aiMocket.endpoint,
-      requestType: aiMocket.requestType,
-      requestHeaders: JSON.parse(aiMocket.requestHeaders),
-      requestBody: JSON.stringify(aiMocket.requestBody),
-      responseBody: JSON.stringify(aiMocket.responseBody),
+      method: aiMocket.requestType,
+      request: JSON.stringify(aiMocket.requestBody),
+      response: JSON.stringify(aiMocket.responseBody),
       createdBy: userId,
       slugName: generateUniqueMocketString(),
     } as unknown as IMocket);
@@ -243,10 +242,10 @@ export default class MocketService {
     }
 
     if (matchedMocket.method == Methods.POST || matchedMocket.method == Methods.PUT) {
-      this.validateRequest(requestBody, matchedMocket.requestBody);
+      this.validateRequest(requestBody, matchedMocket.request);
     }
 
-    const responseBody = JSON.parse(matchedMocket.responseBody as string);
+    const responseBody = JSON.parse(matchedMocket.response as string);
     console.log("Response Body", typeof responseBody);
 
     return this.generateMockResponse(JSON.parse(responseBody as string));
