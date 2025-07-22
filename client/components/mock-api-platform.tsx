@@ -168,6 +168,8 @@ export function MockApiPlatform() {
 
   const addCollection = (collection: Collection) => {
     setCollections((prev) => [...prev, collection])
+    setSelectedCollection(collection) // Set new collection as active
+    setSelectedEndpoint(null) // Clear selected endpoint
   }
 
   // Don't render if no collections loaded yet
