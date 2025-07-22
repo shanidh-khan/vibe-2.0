@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -12,18 +12,37 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { Upload, FileText, Loader2 } from "lucide-react"
+import { Upload, FileText, Loader2, Type } from "lucide-react"
 
 interface ImportSwaggerDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onImport: (swaggerJson: string) => void
+  onImport: (swagger: object) => void
   isLoading?: boolean
 }
 
 export function ImportSwaggerDialog({ open, onOpenChange, onImport, isLoading = false }: ImportSwaggerDialogProps) {
   const [swaggerJson, setSwaggerJson] = useState("")
   const [isValidJson, setIsValidJson] = useState(true)
+  
+  // Reset dialog state when it closes
+  useEffect(() => {
+    if (!open) {
+      setSwaggerJson("")
+      setIsValidJson(true)
+    }
+  }, [open])
+
+  // JSON formatter function
+  const formatJson = () => {
+    try {
+      const parsed = JSON.parse(swaggerJson)
+      const formatted = JSON.stringify(parsed, null, 2)
+      setSwaggerJson(formatted)
+    } catch (error) {
+      console.error('Invalid JSON for formatting:', error)
+    }
+  }
 
   const validateJson = (jsonString: string) => {
     if (!jsonString.trim()) {
@@ -46,22 +65,25 @@ export function ImportSwaggerDialog({ open, onOpenChange, onImport, isLoading = 
 
   const handleSave = () => {
     if (swaggerJson.trim() && isValidJson) {
-      onImport(swaggerJson)
-      setSwaggerJson("")
-      onOpenChange(false)
+      try {
+        const parsedSwagger = JSON.parse(swaggerJson)
+        onImport(parsedSwagger)
+        // Don't close modal here - let the import process handle it
+        // Modal will close after successful import or stay open on error
+      } catch (error) {
+        console.error('Failed to parse JSON:', error)
+      }
     }
   }
 
   const handleCancel = () => {
-    setSwaggerJson("")
-    setIsValidJson(true)
     onOpenChange(false)
   }
 
   const canSave = swaggerJson.trim() && isValidJson
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={isLoading ? undefined : onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden border-border/50 dark:border-gray-700">
         <DialogHeader className="space-y-3">
           <DialogTitle className="flex items-center gap-2 text-xl">
@@ -75,17 +97,30 @@ export function ImportSwaggerDialog({ open, onOpenChange, onImport, isLoading = 
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="swagger-json" className="text-sm font-medium">
-              Swagger/OpenAPI JSON
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="swagger-json" className="text-sm font-medium">
+                Swagger/OpenAPI JSON
+              </Label>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={formatJson}
+                disabled={!swaggerJson.trim() || !isValidJson}
+                title="Format JSON"
+                className="h-6 px-2 text-xs"
+              >
+                <Type className="h-3 w-3" />
+              </Button>
+            </div>
             <Textarea
               id="swagger-json"
               placeholder={`Paste your Swagger/OpenAPI JSON here, for example:\n{\n  "openapi": "3.0.0",\n  "info": {\n    "title": "My API",\n    "version": "1.0.0"\n  },\n  "paths": {\n    "/users": {\n      "get": {\n        "summary": "Get all users"\n      }\n    }\n  }\n}`}
               value={swaggerJson}
               onChange={(e) => handleJsonChange(e.target.value)}
+              disabled={isLoading}
               className={`min-h-[300px] font-mono text-sm resize-none ${
                 !isValidJson ? 'border-red-500 focus:border-red-500' : 'border-border/50 dark:border-gray-700'
-              }`}
+              } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
             />
             
             {/* Validation feedback */}
@@ -118,6 +153,7 @@ export function ImportSwaggerDialog({ open, onOpenChange, onImport, isLoading = 
           <Button
             variant="outline"
             onClick={handleCancel}
+            disabled={isLoading}
             className="border-border/50 dark:border-gray-700"
           >
             Cancel
@@ -132,7 +168,7 @@ export function ImportSwaggerDialog({ open, onOpenChange, onImport, isLoading = 
             ) : (
               <Upload className="h-4 w-4 mr-2" />
             )}
-            {isLoading ? "Importing..." : "Import Endpoints"}
+            {isLoading ? "Importing endpoints..." : "Import Endpoints"}
           </Button>
         </DialogFooter>
       </DialogContent>

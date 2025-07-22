@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Play, Save, Copy, Menu } from "lucide-react"
+import { Play, Save, Copy, Menu, Type } from "lucide-react"
 import type { MockEndpoint, Collection } from "./mock-api-platform"
 import { AiMockGenerator } from "./ai-mock-generator"
 import { ThemeToggle } from "./theme-toggle"
@@ -39,6 +39,37 @@ export function MainContent({
   const [testRequestHeaders, setTestRequestHeaders] = useState<string>("")
   const [updateCollection] = collectionApis.useUpdateCollectionMutation()
   const [updateMocket] = mockApis.useUpdateMocketMutation()
+
+  // Helper function to convert headers to string
+  const headersToString = (headers: string | Record<string, string> | undefined): string => {
+    if (typeof headers === 'string') {
+      return headers
+    } else if (typeof headers === 'object' && headers !== null) {
+      return JSON.stringify(headers, null, 2)
+    }
+    return ''
+  }
+
+  // JSON formatter function
+  const formatJson = (value: string | Record<string, string> | undefined, setValue: (value: string) => void) => {
+    try {
+      let toFormat: any
+      
+      if (typeof value === 'string') {
+        toFormat = JSON.parse(value)
+      } else if (typeof value === 'object' && value !== null) {
+        toFormat = value
+      } else {
+        toFormat = {}
+      }
+      
+      const formatted = JSON.stringify(toFormat, null, 2)
+      setValue(formatted)
+    } catch (error) {
+      console.error('Invalid JSON format:', error)
+      // Could add toast notification here in the future
+    }
+  }
 
   // Reset tab to "endpoint" when collection or endpoint changes
   useEffect(() => {
@@ -381,11 +412,30 @@ export function MainContent({
                       <CardTitle>Request Configuration</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {/* Headers - Show for all methods (auth, accept headers etc.) */}
-                      <div className="space-y-2">
-                        <Label>Request Headers</Label>
+                       {/* Headers - Show for all methods (auth, accept headers etc.) */}
+                       <div className="space-y-2">
+                         <div className="flex items-center justify-between">
+                           <Label>Request Headers</Label>
+                           <Button
+                             variant="ghost"
+                             size="sm"
+                             onClick={() => formatJson(selectedEndpoint.request.headers || '', (value) =>
+                               onUpdateEndpoint({
+                                 ...selectedEndpoint,
+                                 request: {
+                                   ...selectedEndpoint.request,
+                                   headers: value,
+                                 },
+                               })
+                             )}
+                             title="Format JSON"
+                             className="h-6 px-2 text-xs"
+                           >
+                             <Type className="h-3 w-3" />
+                           </Button>
+                         </div>
                         <Textarea
-                          value={selectedEndpoint.request.headers || ""}
+                          value={headersToString(selectedEndpoint.request.headers)}
                           onChange={(e) =>
                             onUpdateEndpoint({
                               ...selectedEndpoint,
@@ -416,7 +466,26 @@ export function MainContent({
                       {/* Body - Only show for methods that typically need a body */}
                       {(selectedEndpoint.method === 'POST' || selectedEndpoint.method === 'PUT' || selectedEndpoint.method === 'PATCH') && (
                         <div className="space-y-2">
-                          <Label>Request Body</Label>
+                          <div className="flex items-center justify-between">
+                            <Label>Request Body</Label>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => formatJson(selectedEndpoint.request.body || '', (value) =>
+                                onUpdateEndpoint({
+                                  ...selectedEndpoint,
+                                  request: {
+                                    ...selectedEndpoint.request,
+                                    body: value,
+                                  },
+                                })
+                              )}
+                              title="Format JSON"
+                              className="h-6 px-2 text-xs"
+                            >
+                              <Type className="h-3 w-3" />
+                            </Button>
+                          </div>
                           <Textarea
                             value={selectedEndpoint.request.body || ""}
                             onChange={(e) =>
@@ -512,7 +581,26 @@ export function MainContent({
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Response Body</Label>
+                    <div className="flex items-center justify-between">
+                      <Label>Response Body</Label>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => formatJson(selectedEndpoint.response.body, (value) =>
+                          onUpdateEndpoint({
+                            ...selectedEndpoint,
+                            response: {
+                              ...selectedEndpoint.response,
+                              body: value,
+                            },
+                          })
+                        )}
+                        title="Format JSON"
+                        className="h-6 px-2 text-xs"
+                      >
+                        <Type className="h-3 w-3" />
+                      </Button>
+                    </div>
                     <Textarea
                       value={selectedEndpoint.response.body}
                       onChange={(e) =>
@@ -579,7 +667,18 @@ export function MainContent({
                   {/* Test Request Configuration */}
                   <div className="space-y-4 border-t border-border/50 pt-4">
                     <div className="space-y-2">
-                      <Label className="text-sm font-medium">Request Headers</Label>
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Request Headers</Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => formatJson(testRequestHeaders, setTestRequestHeaders)}
+                          title="Format JSON"
+                          className="h-6 px-2 text-xs"
+                        >
+                          <Type className="h-3 w-3" />
+                        </Button>
+                      </div>
                       <Textarea
                         value={testRequestHeaders}
                         onChange={(e) => setTestRequestHeaders(e.target.value)}
@@ -595,7 +694,18 @@ export function MainContent({
                     {/* Body - Only show for methods that typically need a body */}
                     {['POST', 'PUT', 'PATCH'].includes(selectedEndpoint.method) && (
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium">Request Body</Label>
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium">Request Body</Label>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => formatJson(testRequestBody, setTestRequestBody)}
+                            title="Format JSON"
+                            className="h-6 px-2 text-xs"
+                          >
+                            <Type className="h-3 w-3" />
+                          </Button>
+                        </div>
                         <Textarea
                           value={testRequestBody}
                           onChange={(e) => setTestRequestBody(e.target.value)}

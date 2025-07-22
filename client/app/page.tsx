@@ -74,7 +74,7 @@ export default function LandingPage() {
           </div>
           <div className="flex items-center space-x-4">
             <ThemeToggle />
-            <Link href="/dashboard">
+            <Link href="/app">
               <Button variant="outline" size="sm">
                 Dashboard
               </Button>
@@ -108,7 +108,7 @@ export default function LandingPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link href="/dashboard">
+            <Link href="/app">
               <Button
                 size="lg"
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-8"
@@ -232,7 +232,7 @@ export default function LandingPage() {
           <p className="text-xl text-muted-foreground mb-8">
             Join thousands of developers who trust Amcok API for their mock API needs
           </p>
-          <Link href="/dashboard">
+          <Link href="/app">
             <Button
               size="lg"
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-12"
