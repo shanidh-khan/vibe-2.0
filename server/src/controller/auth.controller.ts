@@ -72,7 +72,7 @@ export default class AuthController extends Controller {
       console.log("Generated refresh token ", refreshToken);
 
       res.cookie("refresh", refreshToken, this.cookieOptions);
-      res.redirect("http://localhost:3000/dashboard");
+      res.redirect("http://localhost:3000/app");
     } catch (error) {
       console.log(error);
 
