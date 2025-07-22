@@ -6,7 +6,7 @@ export interface IMocket extends Document {
   endpoint: string;
   requestHeaders: Record<string, unknown>;
   request: Record<string, unknown>;
-  response: Object;
+  response: Record<string, unknown>;
   createdBy: string | mongoose.Types.ObjectId;
   collectionId: mongoose.Types.ObjectId;
   slugName: string;

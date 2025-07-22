@@ -242,16 +242,17 @@ export default class MocketService {
     }
 
     if (matchedMocket.method == Methods.POST || matchedMocket.method == Methods.PUT) {
-      this.validateRequest(requestBody, matchedMocket.request);
+      this.validateRequest(requestBody, JSON.parse(matchedMocket.request.body as string));
     }
 
-    const responseBody = JSON.parse(matchedMocket.response as string);
-    console.log("Response Body", typeof responseBody);
+    const responseBody = JSON.parse(matchedMocket.response.body as string);
 
-    return this.generateMockResponse(JSON.parse(responseBody as string));
+    return this.generateMockResponse(responseBody);
   }
 
   private validateRequest(requestBody: any, schema: any, path: string = "") {
+    console.log(requestBody, schema);
+    
     if (requestBody === null || (requestBody === undefined && schema !== null)) {
       throw new ErrorHandler(400, `Missing key at ${path}`);
     }
@@ -289,7 +290,6 @@ export default class MocketService {
   }
 
   private generateMockResponse(schema: Object | any): any {
-    console.log("Schema", typeof schema, schema);
 
     if (Array.isArray(schema)) {
       // const listLength = this.chance.integer({ min: 3, max: 10 });
@@ -303,9 +303,10 @@ export default class MocketService {
     const response: any = schema;
 
     if (typeof response == "object") {
+      
       for (const key in schema) {
         const value = schema[key];
-
+        
         if (typeof value === "string" && value.startsWith("<<") && value.endsWith(">>")) {
           const type = value.slice(2, -2).trim().toLowerCase();
 
