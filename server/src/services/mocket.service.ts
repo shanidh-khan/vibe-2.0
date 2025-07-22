@@ -546,4 +546,17 @@ export default class MocketService {
 
     return { match: true, extractedParams };
   }
+
+  public async generateDescriptionWithAI(id: string) {
+    const mocket = await this.mocketRepo.findOneById(id);
+    if (!mocket) {
+      throw new ErrorHandler(404, "Mocket not found");
+    }
+    const description = await this.openaiService.generateDescription(mocket);
+    await this.mocketRepo.update(id, { description: description.description });
+    return {
+      success: true,
+      updatedDescription: description.description
+    };
+  }
 }

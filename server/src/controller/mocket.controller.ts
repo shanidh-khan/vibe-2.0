@@ -56,6 +56,12 @@ export default class MocketController extends Controller {
       handler: this.generateMocketsFromSwaggerV2.bind(this),
       localMiddleWares: [authMiddleware("access")],
     },
+    {
+      path: "/:id/generate-description",
+      method: Methods.POST,
+      handler: this.generateDescriptionWithAI.bind(this),
+      localMiddleWares: [authMiddleware("access")],
+    }
   ];
 
   async generateMocketsFromSwaggerV2(req: RequestWithInfo, res: Response, next: NextFunction) {
@@ -161,6 +167,15 @@ export default class MocketController extends Controller {
       const deleted = await this.service.deleteMocket(req.params.id, req.user.userId);
       if (!deleted) return res.status(404).json({ message: "Mocket not found" });
       res.status(204).send();
+    } catch (e) {
+      return next(e);
+    }
+  }
+
+  async generateDescriptionWithAI(req: RequestWithInfo, res: Response, next: NextFunction) {
+    try {
+      const result = await this.service.generateDescriptionWithAI(req.params.id);
+      res.status(200).json(result);
     } catch (e) {
       return next(e);
     }

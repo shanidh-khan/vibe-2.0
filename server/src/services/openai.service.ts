@@ -1,3 +1,4 @@
+import { IMocket } from "@/models/mocket.model";
 import OpenAI from "openai";
 import { z } from "zod";
 
@@ -215,5 +216,36 @@ Generate a JSON response with this structure:
         throw new Error("Failed to generate endpoint: Unknown error");
       }
     }
+  }
+
+  async generateDescription(mocket: IMocket) {
+    const prompt = `
+Generate a description for the following API endpoint:
+
+The Endpoint details are: ${JSON.stringify(mocket)}
+
+The description should be a short and concise description of the endpoint.
+
+The description should be in the following format:
+{
+  "description": "string"
+}
+`;
+
+    const completion = await this.openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const response = completion.choices[0]?.message?.content;
+    if (!response) {
+      throw new Error("No response from OpenAI");
+    }
+
+    let sanitizedResponse = response;
+    if (response.startsWith("```json")) {
+      sanitizedResponse = sanitizedResponse.replace("```json", "").replace("```", "");
+    } 
+    return JSON.parse(sanitizedResponse);
   }
 }
