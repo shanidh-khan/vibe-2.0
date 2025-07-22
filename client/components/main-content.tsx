@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -34,8 +34,20 @@ export function MainContent({
   const [testResponse, setTestResponse] = useState<string>("")
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [activeTab, setActiveTab] = useState<string>("endpoint")
+  const [testRequestBody, setTestRequestBody] = useState<string>("")
+  const [testRequestHeaders, setTestRequestHeaders] = useState<string>("")
   const [updateCollection] = collectionApis.useUpdateCollectionMutation()
   const [updateMocket] = mockApis.useUpdateMocketMutation()
+
+  // Reset tab to "endpoint" when collection or endpoint changes
+  useEffect(() => {
+    setActiveTab("endpoint")
+    setTestResponse("") // Also clear test response
+    // Initialize test fields with endpoint defaults
+    setTestRequestBody(selectedEndpoint?.request?.body || "")
+    setTestRequestHeaders(selectedEndpoint?.request?.headers || "")
+  }, [selectedCollection?.id, selectedEndpoint?.id])
 
   if (!selectedEndpoint ) {
     return (
@@ -76,24 +88,73 @@ export function MainContent({
 
   const handleTest = async () => {
     setIsLoading(true)
-    setTimeout(() => {
-      setTestResponse(
-        JSON.stringify(
-          {
-            status: selectedEndpoint.response.status,
-            headers: selectedEndpoint.response.headers,
-            body: JSON.parse(selectedEndpoint.response.body),
-          },
-          null,
-          2,
-        ),
-      )
+    
+    try {
+      // Construct the endpoint URL
+      const endpointUrl = `http://localhost:5000/${selectedCollection?.subDomain || ''}${selectedEndpoint.path}`
+      
+      // Parse test headers if provided
+      let parsedHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (testRequestHeaders.trim()) {
+        try {
+          const customHeaders = JSON.parse(testRequestHeaders)
+          parsedHeaders = { ...parsedHeaders, ...customHeaders }
+        } catch (error) {
+          console.warn('Invalid JSON in test headers, using defaults:', error)
+        }
+      }
+      
+      // Prepare request options
+      const requestOptions: RequestInit = {
+        method: selectedEndpoint.method,
+        headers: parsedHeaders
+      }
+      
+      // Add body for POST, PUT, PATCH requests
+      if (['POST', 'PUT', 'PATCH'].includes(selectedEndpoint.method) && testRequestBody.trim()) {
+        requestOptions.body = testRequestBody
+      }
+      
+      console.log('Testing endpoint:', endpointUrl, 'with options:', requestOptions)
+      
+      // Make the actual HTTP request
+      const response = await fetch(endpointUrl, requestOptions)
+      
+      // Get response text first
+      const responseText = await response.text()
+      
+      // Try to parse as JSON, fallback to plain text
+      let responseBody
+      try {
+        responseBody = JSON.parse(responseText)
+      } catch {
+        responseBody = responseText
+      }
+      
+      // Format the response for display
+      // const formattedResponse = {
+      //   status: response.status,
+      //   statusText: response.statusText,
+      //   headers: Object.fromEntries(response.headers.entries()),
+      //   body: responseBody
+      // }
+      
+      setTestResponse(JSON.stringify(responseBody, null, 2))
+      
+    } catch (error) {
+      console.error('Test request failed:', error)
+      setTestResponse(JSON.stringify({
+        error: 'Request failed',
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        details: 'Make sure the mock server is running and the endpoint exists'
+      }, null, 2))
+    } finally {
       setIsLoading(false)
-    }, 1000)
+    }
   }
 
   const handleCopyEndpointUrl = async () => {
-    const endpointUrl = `localhost:5000/${selectedCollection?.subDomain || ''}/${selectedEndpoint.path}`
+    const endpointUrl = `http://localhost:5000/${selectedCollection?.subDomain || ''}${selectedEndpoint.path}`
     try {
       await navigator.clipboard.writeText(endpointUrl)
       console.log("Endpoint URL copied to clipboard:", endpointUrl)
@@ -210,7 +271,7 @@ export function MainContent({
       </header>
 
       <main className="flex-1 p-6 overflow-hidden">
-        <Tabs defaultValue="endpoint" className="h-full flex flex-col">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
           <TabsList className="grid w-full grid-cols-4 shrink-0 bg-muted/30 border border-border/50 dark:border-gray-800/50">
             <TabsTrigger value="endpoint" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">
               Endpoint
@@ -360,16 +421,35 @@ export function MainContent({
                                 },
                               })
                             }
-                            placeholder='Example:\n{\n  "name": "John Doe",\n  "email": "john@example.com"\n}'
+                            placeholder='Valid JSON required:\n{\n  "name": "John Doe",\n  "email": "john@example.com"\n}'
                             className="font-mono text-sm border-border/50 dark:border-gray-700"
                             rows={6}
                           />
-                          {/* Validation for body when required */}
-                          {(!selectedEndpoint.request.body || selectedEndpoint.request.body.trim() === '') && (
-                            <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded border border-amber-200 dark:border-amber-900/50">
-                              ⚠️ Request body may be required for {selectedEndpoint.method} requests.
-                            </div>
-                          )}
+                          {/* JSON Validation */}
+                          {(() => {
+                            const body = selectedEndpoint.request.body?.trim() || ''
+                            if (!body) {
+                              return (
+                                <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded border border-amber-200 dark:border-amber-900/50">
+                                  ⚠️ Request body is required for {selectedEndpoint.method} requests and must be valid JSON.
+                                </div>
+                              )
+                            }
+                            try {
+                              JSON.parse(body)
+                              return (
+                                <div className="text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-2 rounded border border-green-200 dark:border-green-900/50">
+                                  ✅ Valid JSON format
+                                </div>
+                              )
+                            } catch (error) {
+                              return (
+                                <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded border border-red-200 dark:border-red-900/50">
+                                  ❌ Invalid JSON format: {error instanceof Error ? error.message : 'Please check your JSON syntax'}
+                                </div>
+                              )
+                            }
+                          })()}
                         </div>
                       )}
                     </CardContent>
@@ -473,7 +553,7 @@ export function MainContent({
                     <Label className="text-sm font-medium">Endpoint URL</Label>
                     <div className="flex items-center gap-2">
                       <div className="flex-1 bg-muted/50 px-3 py-2 rounded-md text-sm font-mono border border-border/50 dark:border-gray-700 break-all">
-                        {`localhost:5000/${selectedCollection?.subDomain || ''}/${selectedEndpoint.path}`}
+                        {`http://localhost:5000/${selectedCollection?.subDomain || ''}${selectedEndpoint.path}`}
                       </div>
                       <Button
                         variant="outline"
@@ -487,6 +567,62 @@ export function MainContent({
                     <p className="text-xs text-muted-foreground">
                       Click the copy button to copy this URL to your clipboard for testing in other tools.
                     </p>
+                  </div>
+
+                  {/* Test Request Configuration */}
+                  <div className="space-y-4 border-t border-border/50 pt-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Request Headers</Label>
+                      <Textarea
+                        value={testRequestHeaders}
+                        onChange={(e) => setTestRequestHeaders(e.target.value)}
+                        placeholder={'Example:\n{\n  "Content-Type": "application/json",\n  "Authorization": "Bearer token"\n}'}
+                        className="font-mono text-sm border-border/50 dark:border-gray-700"
+                        rows={4}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        JSON format. Will be merged with default headers.
+                      </p>
+                    </div>
+                    
+                    {/* Body - Only show for methods that typically need a body */}
+                    {['POST', 'PUT', 'PATCH'].includes(selectedEndpoint.method) && (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Request Body</Label>
+                        <Textarea
+                          value={testRequestBody}
+                          onChange={(e) => setTestRequestBody(e.target.value)}
+                          placeholder={'Valid JSON required:\n{\n  "name": "John Doe",\n  "email": "john@example.com"\n}'}
+                          className="font-mono text-sm border-border/50 dark:border-gray-700"
+                          rows={6}
+                        />
+                        {/* JSON Validation for Test Body */}
+                        {(() => {
+                          const body = testRequestBody.trim()
+                          if (!body) {
+                            return (
+                              <p className="text-xs text-muted-foreground">
+                                Valid JSON format required for request body.
+                              </p>
+                            )
+                          }
+                          try {
+                            JSON.parse(body)
+                            return (
+                              <div className="text-xs text-green-600 dark:text-green-400">
+                                ✅ Valid JSON format
+                              </div>
+                            )
+                          } catch (error) {
+                            return (
+                              <div className="text-xs text-red-600 dark:text-red-400">
+                                ❌ Invalid JSON: {error instanceof Error ? error.message : 'Please check your JSON syntax'}
+                              </div>
+                            )
+                          }
+                        })()}
+                      </div>
+                    )}
                   </div>
 
                   {testResponse && (
