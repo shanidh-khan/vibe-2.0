@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronDown, Plus, Globe, Zap } from "lucide-react"
+import { ChevronDown, Plus, Globe, Zap, Trash2 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -9,13 +9,23 @@ import type { Collection, MockEndpoint } from "./mock-api-platform"
 import { AddEndpointDialog } from "./add-endpoint-dialog"
 import { AddCollectionDialog } from "./add-collection-dialog"
 import { mockApis, BackendEndpoint } from "@/apis/mocket"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface AppSidebarProps {
   collections: Collection[]
   selectedCollection: Collection
   selectedEndpoint: MockEndpoint | null
   onSelectCollection: (collection: Collection) => void
-  onSelectEndpoint: (endpoint: MockEndpoint) => void
+  onSelectEndpoint: (endpoint: MockEndpoint | null) => void
   onAddEndpoint: (collectionId: string, endpoint: MockEndpoint) => void
   onAddCollection: (collection: Collection) => void
   isOpen: boolean
@@ -34,6 +44,10 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const [showAddEndpoint, setShowAddEndpoint] = useState(false)
   const [showAddCollection, setShowAddCollection] = useState(false)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [endpointToDelete, setEndpointToDelete] = useState<MockEndpoint | null>(null)
+  
+  const [deleteMocket] = mockApis.useDeleteMocketMutation()
   
   // Fetch endpoints for the selected collection
   const { data: backendEndpoints } = mockApis.useGetMocksQuery(
@@ -84,6 +98,36 @@ export function AppSidebar({
       default:
         return "bg-gray-500/20 text-gray-400 border-gray-500/30"
     }
+  }
+
+  const handleDeleteClick = (endpoint: MockEndpoint, e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent endpoint selection when clicking delete
+    setEndpointToDelete(endpoint)
+    setDeleteModalOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!endpointToDelete) return
+    
+    try {
+      await deleteMocket(endpointToDelete.id).unwrap()
+      console.log("Endpoint deleted successfully:", endpointToDelete.name)
+      
+      // If the deleted endpoint was selected, clear the selection
+      if (selectedEndpoint?.id === endpointToDelete.id) {
+        onSelectEndpoint(null)
+      }
+    } catch (error) {
+      console.error("Failed to delete endpoint:", error)
+    } finally {
+      setDeleteModalOpen(false)
+      setEndpointToDelete(null)
+    }
+  }
+
+  const handleDeleteCancel = () => {
+    setDeleteModalOpen(false)
+    setEndpointToDelete(null)
   }
 
   return (
@@ -144,19 +188,27 @@ export function AppSidebar({
                 <div
                   key={endpoint.id}
                   onClick={() => onSelectEndpoint(endpoint)}
-                  className={`p-3 rounded-lg cursor-pointer transition-all duration-200 border ${
+                  className={`p-3 rounded-lg cursor-pointer transition-all duration-200 border group ${
                     selectedEndpoint?.id === endpoint.id
                       ? "bg-primary/10 border-primary/30 shadow-sm"
                       : "hover:bg-muted/50 border-transparent hover:border-border/50"
                   }`}
                 >
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center justify-between gap-2 mb-2">
                     <Badge
                       variant="outline"
                       className={`text-xs px-2 py-0.5 font-mono ${getMethodColor(endpoint.method)}`}
                     >
                       {endpoint.method}
                     </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400"
+                      onClick={(e) => handleDeleteClick(endpoint, e)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
                   </div>
                   <div className="space-y-1">
                     <div className="font-medium text-sm truncate">{endpoint.name}</div>
@@ -190,6 +242,29 @@ export function AppSidebar({
         onOpenChange={setShowAddCollection}
         onAddCollection={onAddCollection}
       />
+      
+      <AlertDialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Endpoint</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the endpoint "{endpointToDelete?.name}"?
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDeleteCancel}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

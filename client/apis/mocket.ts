@@ -63,6 +63,14 @@ export const mockApis = apiWithTags.injectEndpoints({
       }),
       invalidatesTags: ["MOCKET_LIST"],
     }),
+
+    deleteMocket: builder.mutation<{ success: boolean }, string>({
+      query: (id: string) => ({
+        url: `/mockets/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["MOCKET_LIST"],
+    }),
   }),
 });
 
@@ -74,6 +82,7 @@ export const {
   useLazyGetMocketQuery,
   useLazyGetMocksQuery,
   useUpdateMocketMutation,
+  useDeleteMocketMutation,
 } = mockApis;
 
 export interface Endpoint {
