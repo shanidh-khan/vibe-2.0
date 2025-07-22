@@ -76,26 +76,7 @@ export default class MocketService {
     }
 
     const collection = await this.collectionService.getCollection(createMocket.collectionId);
-    // if (!project) {
-    //   throw new ErrorHandler(404, "Project not found");
-    // }
-
-    // let processedRequestBody: string;
-    // if (typeof createMocket.requestBody === "string") {
-    //   processedRequestBody = createMocket.requestBody;
-    // } else {
-    //   processedRequestBody = JSON.stringify(createMocket.requestBody);
-    // }
-
-    // Validate required fields before DB call
-    // if (!createMocket.requestType || !createMocket.endpoint || !createMocket.requestBody || !createMocket.responseBody) {
-    //   throw new ErrorHandler(400, `Validation failed: Missing required fields: ` + [
-    //     !createMocket.requestType && 'requestType',
-    //     !createMocket.endpoint && 'endpoint',
-    //     !createMocket.requestBody && 'requestBody',
-    //     !createMocket.responseBody && 'responseBody',
-    //   ].filter(Boolean).join(', '));
-    // }
+  
 
     let mocket;
     try {
@@ -104,7 +85,7 @@ export default class MocketService {
         description: createMocket.description,
         collectionId: collection?._id,
         endpoint: createMocket.endpoint,
-        requestType: createMocket.requestType,
+        method: createMocket.method,
         requestHeaders: (typeof createMocket.requestHeaders === "string" && createMocket.requestHeaders !== "undefined"
           ? (() => { try { return JSON.parse(createMocket.requestHeaders as string); } catch { return {}; } })()
           : {}),
@@ -122,7 +103,7 @@ export default class MocketService {
 
     return {
       mocketId: mocket._id,
-      requestType: mocket.requestType,
+      requestType: mocket.method,
       slugName: mocket.slugName,
       // subDomain: project.subDomain,
     };
@@ -149,7 +130,7 @@ export default class MocketService {
     }
 
     const updatedDto = {
-      requestType: dto.requestType,
+      method: dto.method,
       endpoint: dto.endpoint,
       requestHeaders: JSON.parse(dto.requestHeaders as string),
       requestBody: dto.requestBody,
@@ -190,7 +171,7 @@ export default class MocketService {
 
     return {
       mocketId: mocket._id,
-      requestType: mocket.requestType,
+      requestType: mocket.method,
       slugName: mocket.slugName,
       // subDomain: project.subDomain,
     };
@@ -235,7 +216,7 @@ export default class MocketService {
     const exactMatchedMocket = await this.mocketRepo.findOneBy({
       collectionId: new mongoose.Types.ObjectId(collection._id as string),
       endpoint,
-      requestType: method,
+      method: method,
     });
 
     if (exactMatchedMocket) {
@@ -261,7 +242,7 @@ export default class MocketService {
       throw new ErrorHandler(404, "Mocket not found");
     }
 
-    if (matchedMocket.requestType == Methods.POST || matchedMocket.requestType == Methods.PUT) {
+    if (matchedMocket.method == Methods.POST || matchedMocket.method == Methods.PUT) {
       this.validateRequest(requestBody, matchedMocket.requestBody);
     }
 

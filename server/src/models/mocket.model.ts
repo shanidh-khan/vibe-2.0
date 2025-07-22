@@ -2,7 +2,7 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IMocket extends Document {
   name: string;
-  requestType: string;
+  method: string;
   endpoint: string;
   requestHeaders: Record<string, unknown>;
   requestBody: Record<string, unknown>;
@@ -17,7 +17,7 @@ const MocketSchema: Schema = new Schema(
   {
     name: { type: String },
     // apikey: { type: String, required: true, unique: true },
-    requestType: { type: String, required: true },
+    method: { type: String, required: true },
     endpoint: { type: String, required: true },
     requestHeaders: { type: Schema.Types.Mixed, required: true },
     requestBody: { type: Schema.Types.Mixed },

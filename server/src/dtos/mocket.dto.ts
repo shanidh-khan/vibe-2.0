@@ -9,7 +9,7 @@ export class MocketDto {
 
   @IsString()
   @IsNotEmpty()
-  requestType!: string;
+  method!: string;
 
   @IsString()
   @IsNotEmpty()

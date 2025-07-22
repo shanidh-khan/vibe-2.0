@@ -13,10 +13,10 @@ export interface ICollection extends Document {
 const CollectionSchema: Schema = new Schema(
   {
     name: { type: String, required: true },
-    baseUrl: { type: String, required: true },
-    description: { type: String, required: true },
+    baseUrl: { type: String },
+    description: { type: String },
     apiKey: { type: String, required: true, unique: true },
-    subDomain: { type: String, required: true, unique: true },
+    subDomain: { type: String },
     createdBy: { type: Schema.Types.ObjectId, ref: "User" },
     numberOfRequests: { type: Number, default: 0 },
   },
