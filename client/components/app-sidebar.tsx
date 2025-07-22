@@ -65,6 +65,7 @@ export function AppSidebar({
       path: endpoint.endpoint, // Backend uses 'endpoint', UI uses 'path'
       description: endpoint.description || '',
       response,
+      request: endpoint.request || {}, // Include request data from backend
     }
   })
 

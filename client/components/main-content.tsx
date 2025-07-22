@@ -113,7 +113,7 @@ export function MainContent({
         description: selectedEndpoint.description,
         collectionId: selectedCollection.id,
         requestHeaders: { "Content-Type": "application/json" },
-        request: {}, // You might want to expand this based on your needs
+        request: selectedEndpoint.request || {}, // Use actual request data from UI
         response: {
           status: selectedEndpoint.response.status,
           headers: selectedEndpoint.response.headers,
@@ -156,6 +156,7 @@ export function MainContent({
         return "bg-gray-500/20 text-gray-400 border-gray-500/30"
     }
   }
+  console.info(selectedEndpoint, 'shanidh')
 
   return (
     <div className="flex flex-col h-full">
@@ -297,23 +298,63 @@ export function MainContent({
                       <CardTitle>Request Configuration</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                      {/* Headers - Show for all methods (auth, accept headers etc.) */}
                       <div className="space-y-2">
-                        <Label>Request Body</Label>
+                        <Label>Request Headers</Label>
                         <Textarea
-                          value={selectedEndpoint.request.body || ""}
+                          value={selectedEndpoint.request.headers || ""}
                           onChange={(e) =>
                             onUpdateEndpoint({
                               ...selectedEndpoint,
                               request: {
                                 ...selectedEndpoint.request,
-                                body: e.target.value,
+                                headers: e.target.value,
                               },
                             })
                           }
+                          placeholder={selectedEndpoint.method === 'GET' ? 
+                            'Example:\n{\n  "Authorization": "Bearer token",\n  "Accept": "application/json"\n}' :
+                            'Example:\n{\n  "Content-Type": "application/json",\n  "Authorization": "Bearer token"\n}'
+                          }
                           className="font-mono text-sm border-border/50 dark:border-gray-700"
-                          rows={6}
+                          rows={4}
                         />
+                        {/* Validation for headers when required */}
+                        {(selectedEndpoint.method === 'POST' || selectedEndpoint.method === 'PUT' || selectedEndpoint.method === 'PATCH') && 
+                         (!selectedEndpoint.request.headers || selectedEndpoint.request.headers.trim() === '') && (
+                          <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded border border-amber-200 dark:border-amber-900/50">
+                            ⚠️ Headers may be required for {selectedEndpoint.method} requests. Consider adding Content-Type and other necessary headers.
+                          </div>
+                        )}
                       </div>
+                      
+                      {/* Body - Only show for methods that typically need a body */}
+                      {(selectedEndpoint.method === 'POST' || selectedEndpoint.method === 'PUT' || selectedEndpoint.method === 'PATCH') && (
+                        <div className="space-y-2">
+                          <Label>Request Body</Label>
+                          <Textarea
+                            value={selectedEndpoint.request.body || ""}
+                            onChange={(e) =>
+                              onUpdateEndpoint({
+                                ...selectedEndpoint,
+                                request: {
+                                  ...selectedEndpoint.request,
+                                  body: e.target.value,
+                                },
+                              })
+                            }
+                            placeholder='Example:\n{\n  "name": "John Doe",\n  "email": "john@example.com"\n}'
+                            className="font-mono text-sm border-border/50 dark:border-gray-700"
+                            rows={6}
+                          />
+                          {/* Validation for body when required */}
+                          {(!selectedEndpoint.request.body || selectedEndpoint.request.body.trim() === '') && (
+                            <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded border border-amber-200 dark:border-amber-900/50">
+                              ⚠️ Request body may be required for {selectedEndpoint.method} requests.
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 )}

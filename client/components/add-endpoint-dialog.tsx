@@ -45,7 +45,7 @@ export function AddEndpointDialog({ open, onOpenChange, onAddEndpoint, collectio
         description,
         collectionId,
         requestHeaders: { "Content-Type": "application/json" }, // Required field
-        request: {}, // Required field
+        request: {body : 'jksdjksjdfs', headers : 'hjshdjfshdj'}, // Required field
         response: {
             status: 200,
             headers: { "Content-Type": "application/json" },
