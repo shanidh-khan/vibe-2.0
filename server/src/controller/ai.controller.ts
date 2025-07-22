@@ -36,31 +36,19 @@ export default class AIController extends Controller {
    */
   async generateApiEndpoints(req: Request, res: Response) {
     try {
-      const { type, apiDescription }: ApiGenerationRequest = req.body
+      const { description }: { description: string } = req.body
 
       // Validate required fields
-      if (!type || !apiDescription) {
+      if (!description) {
         return res.status(400).json({
           success: false,
-          message: "Missing required fields: type and apiDescription are required"
+          message: "Missing required field: description is required"
         })
       }
 
-      // Validate API type
-      const validTypes = ["rest api", "graphql", "webhook"]
-      if (!validTypes.includes(type)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid API type. Must be one of: rest api, graphql, webhook"
-        })
-      }
+      logger.info(`Generating REST API endpoints for description: ${description}`)
 
-      logger.info(`Generating API endpoints for type: ${type}, description: ${apiDescription}`)
-
-      const result = await this.openaiService.generateApiEndpoints({
-        type,
-        apiDescription
-      })
+      const result = await this.openaiService.generateApiEndpoints(description)
 
       res.json({
         success: true,

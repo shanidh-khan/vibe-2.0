@@ -33,8 +33,13 @@ export class CreateMocketDto extends MocketDto {
 }
 
 export class CreateMocketAiDto {
-  prompt!: string;
-  projectId!: string;
+  @IsString()
+  @IsNotEmpty()
+  description!: string;
+  
+  @IsString()
+  @IsNotEmpty()
+  collectionId!: string;
 }
 
 import { z } from "zod";

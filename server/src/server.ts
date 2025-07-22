@@ -26,6 +26,7 @@ import CollectionRepository from "./repositories/collection.repository";
 import CollectionService from "./services/collection.service";
 import CollectionController from "./controller/collection.controller";
 import AIController from "./controller/ai.controller";
+import { OpenAIService } from "./services/openai.service";
 
 export default class Server {
   public app: Application;
@@ -93,7 +94,8 @@ export const StartServer = (app: Application, port: number | string) => {
   const collectionService = new CollectionService(collectionRepository);
   const userService = new UserService(userRepository);
   const authService = new AuthService(userService);
-  const mocketService = new MocketService(mocketRepository, userService, collectionService);
+  const openaiService = new OpenAIService();
+  const mocketService = new MocketService(mocketRepository, userService, collectionService, openaiService);
 
   // controllers
   const controllers: Controller[] = [

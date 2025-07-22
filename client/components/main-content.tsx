@@ -652,8 +652,8 @@ export function MainContent({
 
             <TabsContent value="ai-generate" className="h-full m-0 overflow-y-auto">
               <AiMockGenerator
-                onGenerateEndpoint={(endpoint) => onAddEndpoint(selectedCollection.id, endpoint)}
-                collectionId={selectedCollection.id}
+                onGenerateEndpoint={(endpoint) => onAddEndpoint(selectedCollection?.id || "", endpoint)}
+                collectionId={selectedCollection?.id || ""}
               />
             </TabsContent>
           </div>

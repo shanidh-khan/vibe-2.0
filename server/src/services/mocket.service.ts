@@ -17,6 +17,7 @@ import { Request } from "express";
 import { MocketResponse } from "@/models/response.model";
 import { OPENAI_API_KEY } from "@/utils/variables";
 import CollectionService from "./collection.service";
+import { OpenAIService } from "./openai.service";
 export default class MocketService {
 
   /**
@@ -82,7 +83,8 @@ export default class MocketService {
   constructor(
     private mocketRepo: MocketRepository,
     private userService: UserService,
-    private collectionService: CollectionService
+    private collectionService: CollectionService,
+    private openaiService: OpenAIService
   ) {}
 
   public async getMocket(id: string) {
@@ -178,40 +180,47 @@ export default class MocketService {
     return updatedDto;
   }
 
+
+  /**
+   * Generate API endpoints using OpenAI service
+   */
   public async createMocketWithAi(dto: CreateMocketAiDto, userId: string) {
-    // const project = await this.projectService.getProject(dto.projectId);
-
-    const response = await this.openai.beta.chat.completions.parse({
-      model: "gpt-4o-mini", // or "gpt-3.5-turbo"
-      messages: [
-        { role: "system", content: this.systemPrompt },
-        { role: "user", content: dto.prompt },
-      ],
-      response_format: zodResponseFormat(ZodMocketSchema, "mocket"),
-    });
-
-    const aiMocket = response.choices[0].message.parsed;
-    console.log("AI Response", aiMocket);
-    if (!aiMocket) {
-      throw new ErrorHandler(500, "AI response content is null");
+    try {
+      // Generate endpoints using OpenAI service
+      const aiResponse = await this.openaiService.generateApiEndpoints(dto.description);
+      
+      // Save each generated endpoint to the database
+      const savedEndpoints = [];
+      for (const endpoint of aiResponse.endpoints) {
+        const mocketData = {
+          name: endpoint.name,
+          description: endpoint.description,
+          collectionId: dto.collectionId,
+          endpoint: endpoint.endpoint,
+          method: endpoint.method,
+          requestHeaders: endpoint.requestHeaders,
+          request: endpoint.request || {},
+          response: endpoint.response,
+        };
+        
+        const savedMocket = await this.createMocket(mocketData, userId);
+        savedEndpoints.push(savedMocket);
+      }
+      
+      return {
+        success: true,
+        data: {
+          endpoints: aiResponse.endpoints,
+          collectionName: aiResponse.collectionName,
+          description: aiResponse.description,
+          savedEndpoints: savedEndpoints
+        }
+      };
+      
+    } catch (error) {
+      console.error("Error generating API endpoints:", error);
+      throw new Error(`Failed to generate API endpoints: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-
-    const mocket = await this.mocketRepo.create({
-      projectId: new mongoose.Types.ObjectId("6788c32cb027d8ab099734fc"),
-      endpoint: aiMocket.endpoint,
-      method: aiMocket.requestType,
-      request: JSON.stringify(aiMocket.requestBody),
-      response: JSON.stringify(aiMocket.responseBody),
-      createdBy: userId,
-      slugName: generateUniqueMocketString(),
-    } as unknown as IMocket);
-
-    return {
-      mocketId: mocket._id,
-      requestType: mocket.method,
-      slugName: mocket.slugName,
-      // subDomain: project.subDomain,
-    };
   }
 
   private extractFromRequest(req: Request) {

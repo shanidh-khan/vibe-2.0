@@ -107,18 +107,30 @@ export default class MocketController extends Controller {
 
   async createAI(req: RequestWithInfo, res: Response, next: NextFunction) {
     try {
+      const { description, collectionId }: { description: string; collectionId: string } = req.body;
+
+      // Validate required fields
+      if (!description || !collectionId) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing required fields: description and collectionId are required",
+        });
+      }
+
       if (!req.user?.userId) {
         return next(new Error("User not found"));
       }
-      const mocket = await this.service.createMocketWithAi(
-        req.body as CreateMocketAiDto,
-        req.user?.userId
-      );
-      res.status(201).json(mocket);
-    } catch (e) {
-      console.log(e);
 
-      return next(e);
+      const result = await this.service.createMocketWithAi({ description, collectionId }, req.user.userId);
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error in createAI:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to generate API endpoints",
+        error: (error as Error).message,
+      });
     }
   }
 
