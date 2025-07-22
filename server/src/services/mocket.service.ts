@@ -14,9 +14,47 @@ import { zodResponseFormat } from "openai/helpers/zod";
 import { z } from "zod";
 
 import { Request } from "express";
+import { MocketResponse } from "@/models/response.model";
 import { OPENAI_API_KEY } from "@/utils/variables";
 import CollectionService from "./collection.service";
 export default class MocketService {
+
+  /**
+   * Generate mocket endpoints from a Swagger (OpenAPI 2.0) config (V2, non-breaking)
+   * @param swaggerConfig The parsed Swagger JSON
+   * @param collectionId The collection to add endpoints to
+   * @param userId The user creating the endpoints
+   * @returns Array of results for each endpoint
+   */
+  public async generateMocketsFromSwaggerV2(swaggerConfig: any, collectionId: string, userId: string) {
+    if (!swaggerConfig || !swaggerConfig.paths) {
+      throw new ErrorHandler(400, "Invalid Swagger config: missing paths");
+    }
+    const results: Array<{ path: string, method: string, mocketId?: string, slugName?: string, error?: string }> = [];
+    for (const [path, methods] of Object.entries(swaggerConfig.paths)) {
+      for (const [method, operationRaw] of Object.entries(methods as any)) {
+        const operation = operationRaw as any;
+        const createMocket: CreateMocketDto = {
+          name: operation.summary || operation.operationId || `${method.toUpperCase()} ${path}`,
+          description: operation.description || '',
+          collectionId,
+          endpoint: path,
+          method: method.toUpperCase(),
+          request: JSON.stringify({ parameters: operation.parameters || [] }),
+          response: JSON.stringify({ responses: operation.responses || {} }),
+        };
+        try {
+          // @ts-ignore: Awaiting the existing createMocket method
+          const mocket = await this.createMocket(createMocket, userId);
+          results.push({ path, method: method.toUpperCase(), mocketId: mocket?.mocketId as string, slugName: mocket?.slugName });
+        } catch (err: any) {
+          results.push({ path, method: method.toUpperCase(), error: err?.message || String(err) });
+        }
+      }
+    }
+    return results;
+  }
+
   private openai = new OpenAI({
     apiKey: OPENAI_API_KEY,
   });
@@ -185,7 +223,7 @@ export default class MocketService {
     return { method, endpoint, projectId, requestBody, query };
   }
 
-  public async trigger(req: Request) {
+  public async trigger(req: Request): Promise<MocketResponse> {
     let { method, endpoint, projectId, requestBody, query } = this.extractFromRequest(req);
 
     const collection = await this.collectionService.getCollectionBySubDomain(projectId);
@@ -247,7 +285,12 @@ export default class MocketService {
 
     const responseBody = JSON.parse(matchedMocket.response.body as string);
 
-    return this.generateMockResponse(responseBody);
+    const response: MocketResponse = {
+      status: matchedMocket.response.status as number,
+      headers: matchedMocket.response.headers as Record<string, any>,
+      body: this.generateMockResponse(responseBody)
+    }
+    return response
   }
 
   private validateRequest(requestBody: any, schema: any, path: string = "") {

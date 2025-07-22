@@ -28,7 +28,7 @@ export default class IndexController extends Controller {
   async index(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await this.mocketService.trigger(req);
-      res.status(200).json(result);
+      res.status(result.status).json(result.body).header(result.headers)
     } catch (error) {
       console.log(error);
 

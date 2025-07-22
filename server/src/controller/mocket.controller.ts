@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import Controller, { IRoute, Methods } from "./controller";
 import MocketService from "@/services/mocket.service";
+import { MocketResponse } from "@/models/response.model";
 import { CreateMocketAiDto, CreateMocketDto } from "@/dtos/mocket.dto";
 import { RequestWithInfo } from "@/interfaces/requestWithRole";
 import authMiddleware from "@/middlewares/authMiddleware";
@@ -49,7 +50,23 @@ export default class MocketController extends Controller {
       handler: this.deleteMocket.bind(this),
       localMiddleWares: [authMiddleware("access")],
     },
+    {
+      path: "/generate-from-swagger",
+      method: Methods.POST,
+      handler: this.generateMocketsFromSwaggerV2.bind(this),
+      localMiddleWares: [authMiddleware("access")],
+    },
   ];
+
+  async generateMocketsFromSwaggerV2(req: RequestWithInfo, res: Response, next: NextFunction) {
+    try {
+      const { collectionId, swagger } = req.body;
+      const results = await this.service.generateMocketsFromSwaggerV2(swagger, collectionId, req.user?.userId!);
+      res.status(200).json(results);
+    } catch (e) {
+      return next(e);
+    }
+  }
 
   async index(req: Request, res: Response) {
     res.send("Hello World");
