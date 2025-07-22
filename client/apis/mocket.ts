@@ -1,4 +1,25 @@
 import { MockEndpoint } from "@/lib/constants/endpoints.constants";
+
+// Backend API response type
+export interface BackendEndpoint {
+  _id: string;
+  name: string;
+  method: string;
+  endpoint: string;
+  response: {
+    status: number;
+    headers: Record<string, string>;
+    body: string;
+  };
+  description?: string;
+  createdBy: string;
+  collectionId: string;
+  slugName: string;
+  createdAt: string;
+  updatedAt: string;
+  requestHeaders?: any;
+  request?: any;
+}
 import { apiWithTags } from "./baseApi";
 
 export const mockApis = apiWithTags.injectEndpoints({
@@ -11,9 +32,9 @@ export const mockApis = apiWithTags.injectEndpoints({
       }),
       invalidatesTags: ["MOCKET_LIST"],
     }),
-    getMocks: builder.query<MockEndpoint[], void>({
-      query: () => ({
-        url: `/mockets`,
+    getMocks: builder.query<BackendEndpoint[], { collectionId?: string }>({
+      query: (params = {}) => ({
+        url: `/mockets${params.collectionId ? `?collectionId=${params.collectionId}` : ''}`,
         method: "GET",
       }),
       providesTags: ["MOCKET_LIST"],
@@ -42,6 +63,14 @@ export const mockApis = apiWithTags.injectEndpoints({
       }),
       invalidatesTags: ["MOCKET_LIST"],
     }),
+
+    deleteMocket: builder.mutation<{ success: boolean }, string>({
+      query: (id: string) => ({
+        url: `/mockets/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["MOCKET_LIST"],
+    }),
   }),
 });
 
@@ -53,6 +82,7 @@ export const {
   useLazyGetMocketQuery,
   useLazyGetMocksQuery,
   useUpdateMocketMutation,
+  useDeleteMocketMutation,
 } = mockApis;
 
 export interface Endpoint {

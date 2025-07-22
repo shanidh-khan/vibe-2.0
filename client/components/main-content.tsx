@@ -13,10 +13,12 @@ import { Play, Save, Copy, Menu } from "lucide-react"
 import type { MockEndpoint, Collection } from "./mock-api-platform"
 import { AiMockGenerator } from "./ai-mock-generator"
 import { ThemeToggle } from "./theme-toggle"
+import { collectionApis } from "@/apis/collection"
+import { mockApis } from "@/apis/mocket"
 
 interface MainContentProps {
   selectedEndpoint: MockEndpoint | null
-  selectedCollection: Collection
+  selectedCollection: Collection | null
   onUpdateEndpoint: (endpoint: MockEndpoint) => void
   onAddEndpoint: (collectionId: string, endpoint: MockEndpoint) => void
   onToggleSidebar: () => void
@@ -31,8 +33,11 @@ export function MainContent({
 }: MainContentProps) {
   const [testResponse, setTestResponse] = useState<string>("")
   const [isLoading, setIsLoading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [updateCollection] = collectionApis.useUpdateCollectionMutation()
+  const [updateMocket] = mockApis.useUpdateMocketMutation()
 
-  if (!selectedEndpoint) {
+  if (!selectedEndpoint ) {
     return (
       <div className="flex flex-col h-full">
         <header className="flex h-16 shrink-0 items-center gap-4 px-6 border-b border-border/50 dark:border-gray-800/50 bg-gradient-to-r from-background to-muted/20">
@@ -57,10 +62,12 @@ export function MainContent({
                 Select an endpoint from the sidebar to start editing, or create a new one with AI.
               </p>
             </div>
-            <AiMockGenerator
-              onGenerateEndpoint={(endpoint) => onAddEndpoint(selectedCollection.id, endpoint)}
-              collectionId={selectedCollection.id}
-            />
+            {selectedCollection && (
+              <AiMockGenerator
+                onGenerateEndpoint={(endpoint) => onAddEndpoint(selectedCollection.id, endpoint)}
+                collectionId={selectedCollection.id}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -85,6 +92,54 @@ export function MainContent({
     }, 1000)
   }
 
+  const handleSave = async () => {
+    if (!selectedEndpoint || !selectedEndpoint.id) {
+      console.error("No endpoint selected or endpoint ID missing")
+      return
+    }
+
+    if (!selectedCollection || !selectedCollection.id) {
+      console.error("No collection selected or collection ID missing")
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      // Map UI endpoint to API format
+      const endpointData = {
+        name: selectedEndpoint.name,
+        method: selectedEndpoint.method,
+        endpoint: selectedEndpoint.path, // UI uses 'path', API expects 'endpoint'
+        description: selectedEndpoint.description,
+        collectionId: selectedCollection.id,
+        requestHeaders: { "Content-Type": "application/json" },
+        request: selectedEndpoint.request || {}, // Use actual request data from UI
+        response: {
+          status: selectedEndpoint.response.status,
+          headers: selectedEndpoint.response.headers,
+          body: selectedEndpoint.response.body
+        }
+      }
+
+      const result = await updateMocket({
+        id: selectedEndpoint.id,
+        ...endpointData
+      }).unwrap()
+
+      console.log("Endpoint saved successfully:", result)
+      // You might want to show a success toast notification here
+      
+      // Optionally update the parent component with the saved endpoint
+      // onUpdateEndpoint(selectedEndpoint)
+      
+    } catch (error) {
+      console.error("Failed to save endpoint:", error)
+      // You might want to show an error toast notification here
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   const getMethodColor = (method: string) => {
     switch (method) {
       case "GET":
@@ -101,6 +156,7 @@ export function MainContent({
         return "bg-gray-500/20 text-gray-400 border-gray-500/30"
     }
   }
+  console.info(selectedEndpoint, 'shanidh')
 
   return (
     <div className="flex flex-col h-full">
@@ -123,9 +179,14 @@ export function MainContent({
             <Play className="h-4 w-4 mr-2" />
             {isLoading ? "Testing..." : "Test"}
           </Button>
-          <Button variant="outline" className="border-border/50 dark:border-gray-700 bg-transparent">
+          <Button 
+            onClick={handleSave}
+            disabled={isSaving}
+            variant="outline" 
+            className="border-border/50 dark:border-gray-700 bg-transparent"
+          >
             <Save className="h-4 w-4 mr-2" />
-            Save
+            {isSaving ? "Saving..." : "Save"}
           </Button>
           <ThemeToggle />
         </div>
@@ -237,23 +298,63 @@ export function MainContent({
                       <CardTitle>Request Configuration</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                      {/* Headers - Show for all methods (auth, accept headers etc.) */}
                       <div className="space-y-2">
-                        <Label>Request Body</Label>
+                        <Label>Request Headers</Label>
                         <Textarea
-                          value={selectedEndpoint.request.body || ""}
+                          value={selectedEndpoint.request.headers || ""}
                           onChange={(e) =>
                             onUpdateEndpoint({
                               ...selectedEndpoint,
                               request: {
                                 ...selectedEndpoint.request,
-                                body: e.target.value,
+                                headers: e.target.value,
                               },
                             })
                           }
+                          placeholder={selectedEndpoint.method === 'GET' ? 
+                            'Example:\n{\n  "Authorization": "Bearer token",\n  "Accept": "application/json"\n}' :
+                            'Example:\n{\n  "Content-Type": "application/json",\n  "Authorization": "Bearer token"\n}'
+                          }
                           className="font-mono text-sm border-border/50 dark:border-gray-700"
-                          rows={6}
+                          rows={4}
                         />
+                        {/* Validation for headers when required */}
+                        {(selectedEndpoint.method === 'POST' || selectedEndpoint.method === 'PUT' || selectedEndpoint.method === 'PATCH') && 
+                         (!selectedEndpoint.request.headers || selectedEndpoint.request.headers.trim() === '') && (
+                          <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded border border-amber-200 dark:border-amber-900/50">
+                            ⚠️ Headers may be required for {selectedEndpoint.method} requests. Consider adding Content-Type and other necessary headers.
+                          </div>
+                        )}
                       </div>
+                      
+                      {/* Body - Only show for methods that typically need a body */}
+                      {(selectedEndpoint.method === 'POST' || selectedEndpoint.method === 'PUT' || selectedEndpoint.method === 'PATCH') && (
+                        <div className="space-y-2">
+                          <Label>Request Body</Label>
+                          <Textarea
+                            value={selectedEndpoint.request.body || ""}
+                            onChange={(e) =>
+                              onUpdateEndpoint({
+                                ...selectedEndpoint,
+                                request: {
+                                  ...selectedEndpoint.request,
+                                  body: e.target.value,
+                                },
+                              })
+                            }
+                            placeholder='Example:\n{\n  "name": "John Doe",\n  "email": "john@example.com"\n}'
+                            className="font-mono text-sm border-border/50 dark:border-gray-700"
+                            rows={6}
+                          />
+                          {/* Validation for body when required */}
+                          {(!selectedEndpoint.request.body || selectedEndpoint.request.body.trim() === '') && (
+                            <div className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-2 rounded border border-amber-200 dark:border-amber-900/50">
+                              ⚠️ Request body may be required for {selectedEndpoint.method} requests.
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 )}
