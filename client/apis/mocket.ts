@@ -81,6 +81,38 @@ export const mockApis = apiWithTags.injectEndpoints({
       }),
       invalidatesTags: ["MOCKET_LIST"],
     }),
+
+    generateDescription: builder.mutation<{ success: boolean; updatedDescription: string }, string>({
+      query: (id: string) => ({
+        url: `/mockets/${id}/generate-description`,
+        method: "POST",
+      }),
+      invalidatesTags: ["MOCKET_LIST"],
+    }),
+
+    generateHeaders: builder.mutation<{ success: boolean; updatedHeaders: Record<string, string> }, string>({
+      query: (id: string) => ({
+        url: `/mockets/${id}/generate-headers`,
+        method: "POST",
+      }),
+      invalidatesTags: ["MOCKET_LIST"],
+    }),
+
+    generateRequestBody: builder.mutation<{ success: boolean; updatedBody: string }, string>({
+      query: (id: string) => ({
+        url: `/mockets/${id}/generate-request-body`,
+        method: "POST",
+      }),
+      invalidatesTags: ["MOCKET_LIST"],
+    }),
+
+    generateResponseBody: builder.mutation<{ success: boolean; updatedBody: string }, string>({
+      query: (id: string) => ({
+        url: `/mockets/${id}/generate-response-body`,
+        method: "POST",
+      }),
+      invalidatesTags: ["MOCKET_LIST"],
+    }),
   }),
 });
 
@@ -94,6 +126,10 @@ export const {
   useUpdateMocketMutation,
   useDeleteMocketMutation,
   useImportFromSwaggerMutation,
+  useGenerateDescriptionMutation,
+  useGenerateHeadersMutation,
+  useGenerateRequestBodyMutation,
+  useGenerateResponseBodyMutation,
 } = mockApis;
 
 export interface Endpoint {

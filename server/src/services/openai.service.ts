@@ -248,4 +248,120 @@ The description should be in the following format:
     } 
     return JSON.parse(sanitizedResponse);
   }
+
+  async generateRequestHeaders(mocket: IMocket) {
+    const prompt = `
+Generate appropriate request headers for the following API endpoint:
+
+The Endpoint details are: ${JSON.stringify(mocket)}
+
+The headers should be appropriate for the HTTP method and endpoint purpose.
+Consider authentication, content type, and other relevant headers.
+
+The response should be a JSON object with the following format:
+{
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer token",
+    "Accept": "application/json"
+  }
+}
+
+It should be a valid JSON object. Don't include any other text or comments.
+`;
+
+    const completion = await this.openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    
+    const response = completion.choices[0]?.message?.content;
+    console.log(response)
+    if (!response) {
+      throw new Error("No response from OpenAI");
+    }
+
+    let sanitizedResponse = response;
+    if (response.startsWith("```json")) {
+      sanitizedResponse = sanitizedResponse.replace("```json", "").replace("```", "");
+    } 
+    return JSON.parse(sanitizedResponse);
+  }
+
+  async generateRequestBody(mocket: IMocket) {
+    const prompt = `
+Generate an appropriate request body for the following API endpoint:
+
+The Endpoint details are: ${JSON.stringify(mocket)}
+
+The request body should be appropriate for the HTTP method and endpoint purpose.
+Consider the endpoint name, method, and any existing description to determine what data should be sent.
+
+The response should be a JSON object with the following format:
+{
+  "body": {
+    "field1": "example value",
+    "field2": "example value"
+  }
+}
+
+It should be a valid JSON object. Don't include any other text or comments.
+`;
+
+    const completion = await this.openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const response = completion.choices[0]?.message?.content;
+    console.log(response)
+    if (!response) {
+      throw new Error("No response from OpenAI");
+    }
+
+    let sanitizedResponse = response;
+    if (response.startsWith("```json")) {
+      sanitizedResponse = sanitizedResponse.replace("```json", "").replace("```", "");
+    } 
+    return JSON.parse(sanitizedResponse);
+  }
+
+  async generateResponseBody(mocket: IMocket) {
+    const prompt = `
+Generate an appropriate response body for the following API endpoint:
+
+The Endpoint details are: ${JSON.stringify(mocket)}
+
+The response body should be appropriate for the HTTP method and endpoint purpose.
+Consider the endpoint name, method, and any existing description to determine what data should be returned.
+
+The response should be a JSON object with the following format:
+{
+  "body": {
+    "field1": "example value",
+    "field2": "example value"
+  }
+}
+
+It should be a valid JSON object. Don't include any other text or comments.
+`;
+
+    const completion = await this.openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const response = completion.choices[0]?.message?.content;
+    console.log(response)
+    if (!response) {
+      throw new Error("No response from OpenAI");
+    }
+
+    let sanitizedResponse = response;
+    if (response.startsWith("```json")) {
+      sanitizedResponse = sanitizedResponse.replace("```json", "").replace("```", "");
+    } 
+    return JSON.parse(sanitizedResponse);
+  }
 }
