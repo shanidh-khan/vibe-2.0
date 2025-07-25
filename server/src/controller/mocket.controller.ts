@@ -61,6 +61,24 @@ export default class MocketController extends Controller {
       method: Methods.POST,
       handler: this.generateDescriptionWithAI.bind(this),
       localMiddleWares: [authMiddleware("access")],
+    },
+    {
+      path: "/:id/generate-headers",
+      method: Methods.POST,
+      handler: this.generateRequestHeadersWithAI.bind(this),
+      localMiddleWares: [authMiddleware("access")],
+    },
+    {
+      path: "/:id/generate-request-body",
+      method: Methods.POST,
+      handler: this.generateRequestBodyWithAI.bind(this),
+      localMiddleWares: [authMiddleware("access")],
+    },
+    {
+      path: "/:id/generate-response-body",
+      method: Methods.POST,
+      handler: this.generateResponseBodyWithAI.bind(this),
+      localMiddleWares: [authMiddleware("access")],
     }
   ];
 
@@ -175,6 +193,33 @@ export default class MocketController extends Controller {
   async generateDescriptionWithAI(req: RequestWithInfo, res: Response, next: NextFunction) {
     try {
       const result = await this.service.generateDescriptionWithAI(req.params.id);
+      res.status(200).json(result);
+    } catch (e) {
+      return next(e);
+    }
+  }
+
+  async generateRequestHeadersWithAI(req: RequestWithInfo, res: Response, next: NextFunction) {
+    try {
+      const result = await this.service.generateRequestHeadersWithAI(req.params.id);
+      res.status(200).json(result);
+    } catch (e) {
+      return next(e);
+    }
+  }
+
+  async generateRequestBodyWithAI(req: RequestWithInfo, res: Response, next: NextFunction) {
+    try {
+      const result = await this.service.generateRequestBodyWithAI(req.params.id);
+      res.status(200).json(result);
+    } catch (e) {
+      return next(e);
+    }
+  }
+
+  async generateResponseBodyWithAI(req: RequestWithInfo, res: Response, next: NextFunction) {
+    try {
+      const result = await this.service.generateResponseBodyWithAI(req.params.id);
       res.status(200).json(result);
     } catch (e) {
       return next(e);

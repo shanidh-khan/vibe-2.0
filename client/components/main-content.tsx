@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Play, Save, Copy, Menu, Type } from "lucide-react"
+import { Play, Save, Copy, Menu, Type, Sparkles } from "lucide-react"
 import type { MockEndpoint, Collection } from "./mock-api-platform"
 import { AiMockGenerator } from "./ai-mock-generator"
 import { ThemeToggle } from "./theme-toggle"
@@ -39,6 +39,10 @@ export function MainContent({
   const [testRequestHeaders, setTestRequestHeaders] = useState<string>("")
   const [updateCollection] = collectionApis.useUpdateCollectionMutation()
   const [updateMocket] = mockApis.useUpdateMocketMutation()
+  const [generateDescription, { isLoading: isGeneratingDescription }] = mockApis.useGenerateDescriptionMutation()
+  const [generateHeaders, { isLoading: isGeneratingHeaders }] = mockApis.useGenerateHeadersMutation()
+  const [generateRequestBody, { isLoading: isGeneratingRequestBody }] = mockApis.useGenerateRequestBodyMutation()
+  const [generateResponseBody, { isLoading: isGeneratingResponseBody }] = mockApis.useGenerateResponseBodyMutation()
 
   // Helper function to convert headers to string
   const headersToString = (headers: string | Record<string, string> | undefined): string => {
@@ -77,7 +81,7 @@ export function MainContent({
     setTestResponse("") // Also clear test response
     // Initialize test fields with endpoint defaults
     setTestRequestBody(selectedEndpoint?.request?.body || "")
-    setTestRequestHeaders(selectedEndpoint?.request?.headers || "")
+    setTestRequestHeaders(headersToString(selectedEndpoint?.request?.headers) || "")
   }, [selectedCollection?.id, selectedEndpoint?.id])
 
   if (!selectedEndpoint ) {
@@ -126,7 +130,7 @@ export function MainContent({
       
       // Parse test headers if provided
       let parsedHeaders: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (testRequestHeaders.trim()) {
+      if (testRequestHeaders) {
         try {
           const customHeaders = JSON.parse(testRequestHeaders)
           parsedHeaders = { ...parsedHeaders, ...customHeaders }
@@ -246,6 +250,87 @@ export function MainContent({
       // You might want to show an error toast notification here
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleGenerateDescription = async () => {
+    if (!selectedEndpoint) return
+
+    try {
+      const result = await generateDescription(selectedEndpoint.id).unwrap()
+      if (result.success) {
+        onUpdateEndpoint({
+          ...selectedEndpoint,
+          description: result.updatedDescription,
+        })
+        // TODO: Add success notification/toast
+      }
+    } catch (error) {
+      console.error('Failed to generate description:', error)
+      // TODO: Add error notification/toast
+    }
+  }
+
+  const handleGenerateHeaders = async () => {
+    if (!selectedEndpoint) return
+
+    try {
+      const result = await generateHeaders(selectedEndpoint.id).unwrap()
+      if (result.success) {
+        onUpdateEndpoint({
+          ...selectedEndpoint,
+          request: {
+            ...selectedEndpoint.request,
+            headers: result.updatedHeaders,
+          },
+        })
+        // TODO: Add success notification/toast
+      }
+    } catch (error) {
+      console.error('Failed to generate headers:', error)
+      // TODO: Add error notification/toast
+    }
+  }
+
+  const handleGenerateRequestBody = async () => {
+    if (!selectedEndpoint) return
+
+    try {
+      const result = await generateRequestBody(selectedEndpoint.id).unwrap()
+      if (result.success) {
+        onUpdateEndpoint({
+          ...selectedEndpoint,
+          request: {
+            ...selectedEndpoint.request,
+            body: result.updatedBody,
+          },
+        })
+        // TODO: Add success notification/toast
+      }
+    } catch (error) {
+      console.error('Failed to generate request body:', error)
+      // TODO: Add error notification/toast
+    }
+  }
+
+  const handleGenerateResponseBody = async () => {
+    if (!selectedEndpoint) return
+
+    try {
+      const result = await generateResponseBody(selectedEndpoint.id).unwrap()
+      if (result.success) {
+        onUpdateEndpoint({
+          ...selectedEndpoint,
+          response: {
+            ...selectedEndpoint.response,
+            body: result.updatedBody,
+          },
+        })
+        // TODO: Add success notification/toast
+      }
+    } catch (error) {
+      console.error('Failed to generate response body:', error)
+      // TODO: Add error notification/toast
     }
   }
 
@@ -389,7 +474,20 @@ export function MainContent({
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="description">Description</Label>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="description">Description</Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleGenerateDescription}
+                          disabled={isGeneratingDescription}
+                          title="Generate description with AI"
+                          className="h-6 px-2 text-xs hover:bg-gradient-to-r hover:from-purple-500/20 hover:to-pink-500/20"
+                        >
+                          <Sparkles className="h-3 w-3 mr-1" />
+                          {isGeneratingDescription ? "Generating..." : "AI"}
+                        </Button>
+                      </div>
                       <Textarea
                         id="description"
                         value={selectedEndpoint.description || ""}
@@ -401,6 +499,7 @@ export function MainContent({
                         }
                         rows={3}
                         className="border-border/50 dark:border-gray-700"
+                        placeholder="Enter a description for this endpoint or use AI to generate one..."
                       />
                     </div>
                   </CardContent>
@@ -416,23 +515,36 @@ export function MainContent({
                        <div className="space-y-2">
                          <div className="flex items-center justify-between">
                            <Label>Request Headers</Label>
-                           <Button
-                             variant="ghost"
-                             size="sm"
-                             onClick={() => formatJson(selectedEndpoint.request.headers || '', (value) =>
-                               onUpdateEndpoint({
-                                 ...selectedEndpoint,
-                                 request: {
-                                   ...selectedEndpoint.request,
-                                   headers: value,
-                                 },
-                               })
-                             )}
-                             title="Format JSON"
-                             className="h-6 px-2 text-xs"
-                           >
-                             <Type className="h-3 w-3" />
-                           </Button>
+                           <div className="flex items-center gap-1">
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={handleGenerateHeaders}
+                               disabled={isGeneratingHeaders}
+                               title="Generate headers with AI"
+                               className="h-6 px-2 text-xs hover:bg-gradient-to-r hover:from-purple-500/20 hover:to-pink-500/20"
+                             >
+                               <Sparkles className="h-3 w-3 mr-1" />
+                               {isGeneratingHeaders ? "Generating..." : "AI"}
+                             </Button>
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={() => formatJson(selectedEndpoint.request.headers || '', (value) =>
+                                 onUpdateEndpoint({
+                                   ...selectedEndpoint,
+                                   request: {
+                                     ...selectedEndpoint.request,
+                                     headers: value,
+                                   },
+                                 })
+                               )}
+                               title="Format JSON"
+                               className="h-6 px-2 text-xs"
+                             >
+                               <Type className="h-3 w-3" />
+                             </Button>
+                           </div>
                          </div>
                         <Textarea
                           value={headersToString(selectedEndpoint.request.headers)}
@@ -446,8 +558,8 @@ export function MainContent({
                             })
                           }
                           placeholder={selectedEndpoint.method === 'GET' ? 
-                            'Example:\n{\n  "Authorization": "Bearer token",\n  "Accept": "application/json"\n}' :
-                            'Example:\n{\n  "Content-Type": "application/json",\n  "Authorization": "Bearer token"\n}'
+                            'Example:\n{\n  "Authorization": "Bearer token",\n  "Accept": "application/json"\n}\n\nOr use AI to generate appropriate headers...' :
+                            'Example:\n{\n  "Content-Type": "application/json",\n  "Authorization": "Bearer token"\n}\n\nOr use AI to generate appropriate headers...'
                           }
                           className="font-mono text-sm border-border/50 dark:border-gray-700"
                           rows={4}
@@ -468,23 +580,36 @@ export function MainContent({
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
                             <Label>Request Body</Label>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => formatJson(selectedEndpoint.request.body || '', (value) =>
-                                onUpdateEndpoint({
-                                  ...selectedEndpoint,
-                                  request: {
-                                    ...selectedEndpoint.request,
-                                    body: value,
-                                  },
-                                })
-                              )}
-                              title="Format JSON"
-                              className="h-6 px-2 text-xs"
-                            >
-                              <Type className="h-3 w-3" />
-                            </Button>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleGenerateRequestBody}
+                                disabled={isGeneratingRequestBody}
+                                title="Generate request body with AI"
+                                className="h-6 px-2 text-xs hover:bg-gradient-to-r hover:from-purple-500/20 hover:to-pink-500/20"
+                              >
+                                <Sparkles className="h-3 w-3 mr-1" />
+                                {isGeneratingRequestBody ? "Generating..." : "AI"}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => formatJson(selectedEndpoint.request.body || '', (value) =>
+                                  onUpdateEndpoint({
+                                    ...selectedEndpoint,
+                                    request: {
+                                      ...selectedEndpoint.request,
+                                      body: value,
+                                    },
+                                  })
+                                )}
+                                title="Format JSON"
+                                className="h-6 px-2 text-xs"
+                              >
+                                <Type className="h-3 w-3" />
+                              </Button>
+                            </div>
                           </div>
                           <Textarea
                             value={selectedEndpoint.request.body || ""}
@@ -497,7 +622,7 @@ export function MainContent({
                                 },
                               })
                             }
-                            placeholder='Valid JSON required:\n{\n  "name": "John Doe",\n  "email": "john@example.com"\n}'
+                            placeholder='Valid JSON required:\n{\n  "name": "John Doe",\n  "email": "john@example.com"\n}\n\nOr use AI to generate appropriate request body...'
                             className="font-mono text-sm border-border/50 dark:border-gray-700"
                             rows={6}
                           />
@@ -583,23 +708,36 @@ export function MainContent({
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label>Response Body</Label>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => formatJson(selectedEndpoint.response.body, (value) =>
-                          onUpdateEndpoint({
-                            ...selectedEndpoint,
-                            response: {
-                              ...selectedEndpoint.response,
-                              body: value,
-                            },
-                          })
-                        )}
-                        title="Format JSON"
-                        className="h-6 px-2 text-xs"
-                      >
-                        <Type className="h-3 w-3" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleGenerateResponseBody}
+                          disabled={isGeneratingResponseBody}
+                          title="Generate response body with AI"
+                          className="h-6 px-2 text-xs hover:bg-gradient-to-r hover:from-purple-500/20 hover:to-pink-500/20"
+                        >
+                          <Sparkles className="h-3 w-3 mr-1" />
+                          {isGeneratingResponseBody ? "Generating..." : "AI"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => formatJson(selectedEndpoint.response.body, (value) =>
+                            onUpdateEndpoint({
+                              ...selectedEndpoint,
+                              response: {
+                                ...selectedEndpoint.response,
+                                body: value,
+                              },
+                            })
+                          )}
+                          title="Format JSON"
+                          className="h-6 px-2 text-xs"
+                        >
+                          <Type className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                     <Textarea
                       value={selectedEndpoint.response.body}
@@ -612,6 +750,7 @@ export function MainContent({
                           },
                         })
                       }
+                      placeholder="Enter response body JSON or use AI to generate one..."
                       className="font-mono text-sm border-border/50 dark:border-gray-700"
                       rows={15}
                     />

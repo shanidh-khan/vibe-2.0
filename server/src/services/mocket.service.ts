@@ -559,4 +559,58 @@ export default class MocketService {
       updatedDescription: description.description
     };
   }
+
+  public async generateRequestHeadersWithAI(id: string) {
+    const mocket = await this.mocketRepo.findOneById(id);
+    if (!mocket) {
+      throw new ErrorHandler(404, "Mocket not found");
+    }
+    const headers = await this.openaiService.generateRequestHeaders(mocket);
+    await this.mocketRepo.update(id, { 
+      request: {
+        ...mocket.request,
+        headers: headers.headers
+      }
+    });
+    return {
+      success: true,
+      updatedHeaders: headers.headers
+    };
+  }
+
+  public async generateRequestBodyWithAI(id: string) {
+    const mocket = await this.mocketRepo.findOneById(id);
+    if (!mocket) {
+      throw new ErrorHandler(404, "Mocket not found");
+    }
+    const body = await this.openaiService.generateRequestBody(mocket);
+    await this.mocketRepo.update(id, { 
+      request: {
+        ...mocket.request,
+        body: JSON.stringify(body.body, null, 2)
+      }
+    });
+    return {
+      success: true,
+      updatedBody: JSON.stringify(body.body, null, 2)
+    };
+  }
+
+  public async generateResponseBodyWithAI(id: string) {
+    const mocket = await this.mocketRepo.findOneById(id);
+    if (!mocket) {
+      throw new ErrorHandler(404, "Mocket not found");
+    }
+    const body = await this.openaiService.generateResponseBody(mocket);
+    await this.mocketRepo.update(id, { 
+      response: {
+        ...mocket.response,
+        body: JSON.stringify(body.body, null, 2)
+      }
+    });
+    return {
+      success: true,
+      updatedBody: JSON.stringify(body.body, null, 2)
+    };
+  }
 }

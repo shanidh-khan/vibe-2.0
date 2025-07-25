@@ -103,7 +103,7 @@ export const StartServer = (app: Application, port: number | string) => {
     new UserController(userService),
     new CollectionController(collectionService),
     new MocketController(mocketService),
-    new AIController(),
+    new AIController(openaiService),
     new IndexController(mocketService),
   ];
   const globalMiddlewares: RequestHandler[] = [
